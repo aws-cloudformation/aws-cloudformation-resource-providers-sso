@@ -1,104 +1,160 @@
 {
     "typeName": "AWS::SSO::PermissionSet",
-    "description": "An example resource schema demonstrating some basic constructs and validation rules.",
-    "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+    "description": "Resource Type definition for SSO PermissionSet",
+    "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-sso/aws-sso-permissionset",
     "definitions": {
-        "InitechDateFormat": {
-            "$comment": "Use the `definitions` block to provide shared resource property schemas",
-            "type": "string",
-            "format": "date-time"
-        },
-        "Memo": {
+        "Tag": {
+            "description": "The metadata that you apply to the permission set to help you categorize and organize them.",
             "type": "object",
             "properties": {
-                "Heading": {
-                    "type": "string"
+                "Key": {
+                    "type": "string",
+                    "pattern": "[\\w+=,.@-]+",
+                    "minLength": 1,
+                    "maxLength": 128
                 },
-                "Body": {
-                    "type": "string"
+                "Value": {
+                    "type": "string",
+                    "pattern": "[\\w+=,.@-]+",
+                    "minLength": 0,
+                    "maxLength": 256
                 }
             },
-            "additionalProperties": false
+            "required": [
+                "Key",
+                "Value"
+            ]
+        },
+        "ManagedPolicyArn": {
+            "description": "The managed policy to attach.",
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2048
         }
     },
     "properties": {
-        "TPSCode": {
-            "description": "A TPS Code is automatically generated on creation and assigned as the unique identifier.",
+        "Name": {
+            "description": "The name you want to assign to this permission set.",
             "type": "string",
-            "pattern": "^[A-Z]{3,5}[0-9]{8}-[0-9]{4}$"
+            "pattern": "[\\w+=,.@-]+",
+            "minLength": 1,
+            "maxLength": 32
         },
-        "Title": {
-            "description": "The title of the TPS report is a mandatory element.",
+        "PermissionSetArn": {
+            "description": "The permission set that the policy will be attached to",
             "type": "string",
-            "minLength": 20,
-            "maxLength": 250
+            "pattern": "arn:aws:sso:::permissionSet/(sso)?ins-[a-zA-Z0-9-.]{16}/ps-[a-zA-Z0-9-./]{16}",
+            "minLength": 10,
+            "maxLength": 1224
         },
-        "CoverSheetIncluded": {
-            "description": "Required for all TPS Reports submitted after 2/19/1999",
-            "type": "boolean"
-        },
-        "DueDate": {
-            "$ref": "#/definitions/InitechDateFormat"
-        },
-        "ApprovalDate": {
-            "$ref": "#/definitions/InitechDateFormat"
-        },
-        "Memo": {
-            "$ref": "#/definitions/Memo"
-        },
-        "SecondCopyOfMemo": {
-            "description": "In case you didn't get the first one.",
-            "$ref": "#/definitions/Memo"
-        },
-        "TestCode": {
+        "Description": {
+            "description": "The permission set description.",
             "type": "string",
-            "enum": [
-                "NOT_STARTED",
-                "CANCELLED"
-            ]
+            "pattern": "[\\p{L}\\p{M}\\p{Z}\\p{S}\\p{N}\\p{P}]*",
+            "minLength": 1,
+            "maxLength": 700
         },
-        "Authors": {
+        "InstanceArn": {
+            "description": "The sso instance arn that the permission set is owned.",
+            "type": "string",
+            "pattern": "arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}",
+            "minLength": 10,
+            "maxLength": 1224
+        },
+        "SessionDuration": {
+            "description": "The length of time that a user can be signed in to an AWS account.",
+            "type": "string",
+            "pattern": "^(-?)P(?=\\d|T\\d)(?:(\\d+)Y)?(?:(\\d+)M)?(?:(\\d+)([DW]))?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+(?:\\.\\d+)?)S)?)?$",
+            "minLength": 1,
+            "maxLength": 100
+        },
+        "RelayStateType": {
+            "description": "The relay state URL that redirect links to any service in the AWS Management Console.",
+            "type": "string",
+            "pattern": "[a-zA-Z0-9&amp;$@#\\\/%?=~\\-_'&quot;|!:,.;*+\\[\\]\\ \\(\\)\\{\\}]+",
+            "minLength": 1,
+            "maxLength": 240
+        },
+        "ManagedPolicies": {
             "type": "array",
+            "insertionOrder": false,
             "items": {
-                "type": "string"
-            }
+                "$ref": "#/definitions/ManagedPolicyArn"
+            },
+            "maxItems": 20
+        },
+        "InlinePolicy": {
+            "description": "The inline policy to put in permission set.",
+            "type": "string",
+            "pattern": "[\\w+=,.@-]+",
+            "minLength": 1,
+            "maxLength": 10240
+        },
+        "Tags": {
+            "type": "array",
+            "insertionOrder": false,
+            "items": {
+                "$ref": "#/definitions/Tag"
+            },
+            "maxItems": 50
         }
     },
     "additionalProperties": false,
     "required": [
-        "TestCode",
-        "Title"
+        "Name",
+        "InstanceArn"
+    ],
+    "createOnlyProperties": [
+        "/properties/InstanceArn",
+        "/properties/Name"
     ],
     "readOnlyProperties": [
-        "/properties/TPSCode"
+        "/properties/PermissionSetArn"
     ],
     "primaryIdentifier": [
-        "/properties/TPSCode"
+        "/properties/InstanceArn",
+        "/properties/PermissionSetArn"
     ],
     "handlers": {
         "create": {
             "permissions": [
-                "initech:CreateReport"
+                "sso:CreatePermissionSet",
+                "sso:PutInlinePolicyToPermissionSet",
+                "sso:AttachManagedPolicyToPermissionSet",
+                "sso:ListManagedPoliciesInPermissionSet",
+                "sso:TagResource"
             ]
         },
         "read": {
             "permissions": [
-                "initech:DescribeReport"
+                "sso:DescribePermissionSet",
+                "sso:ListTagsForResource",
+                "sso:ListManagedPoliciesInPermissionSet",
+                "sso:GetInlinePolicyForPermissionSet"
             ]
         },
         "update": {
             "permissions": [
-                "initech:UpdateReport"
+                "sso:UpdatePermissionSet",
+                "sso:TagResource",
+                "sso:UntagResource",
+                "sso:ListTagsForResource",
+                "sso:AttachManagedPolicyToPermissionSet",
+                "sso:DetachManagedPolicyFromPermissionSet",
+                "sso:ListManagedPoliciesInPermissionSet",
+                "sso:PutInlinePolicyToPermissionSet",
+                "sso:DeleteInlinePolicyFromPermissionSet",
+                "sso:ProvisionPermissionSet",
+                "sso:DescribePermissionSetProvisioningStatus"
             ]
         },
         "delete": {
             "permissions": [
-                "initech:DeleteReport"
+                "sso:DeletePermissionSet"
             ]
         },
         "list": {
             "permissions": [
-                "initech:ListReports"
             ]
         }
     }

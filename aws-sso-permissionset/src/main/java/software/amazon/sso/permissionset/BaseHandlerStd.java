@@ -1,6 +1,6 @@
 package software.amazon.sso.permissionset;
 
-import software.amazon.awssdk.core.SdkClient;
+import software.amazon.awssdk.services.ssoadmin.SsoAdminClient;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
 import software.amazon.cloudformation.proxy.Logger;
 import software.amazon.cloudformation.proxy.ProgressEvent;
@@ -10,6 +10,7 @@ import software.amazon.cloudformation.proxy.ResourceHandlerRequest;
 // Placeholder for the functionality that could be shared across Create/Read/Update/Delete/List Handlers
 
 public abstract class BaseHandlerStd extends BaseHandler<CallbackContext> {
+
   @Override
   public final ProgressEvent<ResourceModel, CallbackContext> handleRequest(
     final AmazonWebServicesClientProxy proxy,
@@ -26,9 +27,9 @@ public abstract class BaseHandlerStd extends BaseHandler<CallbackContext> {
   }
 
   protected abstract ProgressEvent<ResourceModel, CallbackContext> handleRequest(
-    final AmazonWebServicesClientProxy proxy,
-    final ResourceHandlerRequest<ResourceModel> request,
-    final CallbackContext callbackContext,
-    final ProxyClient<SdkClient> proxyClient,
-    final Logger logger);
+          final AmazonWebServicesClientProxy proxy,
+          final ResourceHandlerRequest<ResourceModel> request,
+          final CallbackContext callbackContext,
+          final ProxyClient<SsoAdminClient> client,
+          final Logger logger);
 }

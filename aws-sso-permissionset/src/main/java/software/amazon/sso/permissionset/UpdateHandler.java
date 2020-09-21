@@ -1,18 +1,35 @@
 package software.amazon.sso.permissionset;
 
-// TODO: replace all usage of SdkClient with your service client type, e.g; YourServiceAsyncClient
-// import software.amazon.awssdk.services.yourservice.YourServiceAsyncClient;
-
-import software.amazon.awssdk.awscore.AwsRequest;
-import software.amazon.awssdk.awscore.AwsResponse;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.SdkClient;
+import com.google.common.collect.Sets;
+import software.amazon.awssdk.services.ssoadmin.SsoAdminClient;
+import software.amazon.awssdk.services.ssoadmin.model.ConflictException;
+import software.amazon.awssdk.services.ssoadmin.model.DescribePermissionSetProvisioningStatusRequest;
+import software.amazon.awssdk.services.ssoadmin.model.DescribePermissionSetProvisioningStatusResponse;
+import software.amazon.awssdk.services.ssoadmin.model.InternalServerException;
+import software.amazon.awssdk.services.ssoadmin.model.ResourceNotFoundException;
+import software.amazon.awssdk.services.ssoadmin.model.StatusValues;
+import software.amazon.awssdk.services.ssoadmin.model.Tag;
+import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
+import software.amazon.awssdk.services.ssoadmin.model.UpdatePermissionSetResponse;
 import software.amazon.cloudformation.exceptions.CfnGeneralServiceException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
+import software.amazon.cloudformation.proxy.HandlerErrorCode;
 import software.amazon.cloudformation.proxy.Logger;
 import software.amazon.cloudformation.proxy.ProgressEvent;
 import software.amazon.cloudformation.proxy.ProxyClient;
 import software.amazon.cloudformation.proxy.ResourceHandlerRequest;
+import software.amazon.sso.permissionset.actionProxy.InlinePolicyProxy;
+import software.amazon.sso.permissionset.actionProxy.ManagedPolicyAttachmentProxy;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static software.amazon.sso.permissionset.utils.Constants.FAILED_WORKFLOW_REQUEST;
+import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS;
+import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS_ZERO;
+import static software.amazon.sso.permissionset.utils.TagsUtil.getResourceTags;
 
 public class UpdateHandler extends BaseHandlerStd {
     private Logger logger;
@@ -21,131 +38,161 @@ public class UpdateHandler extends BaseHandlerStd {
         final AmazonWebServicesClientProxy proxy,
         final ResourceHandlerRequest<ResourceModel> request,
         final CallbackContext callbackContext,
-        final ProxyClient<SdkClient> proxyClient,
+        final ProxyClient<SsoAdminClient> proxyClient,
         final Logger logger) {
 
         this.logger = logger;
 
-        final ResourceModel model = request.getDesiredResourceState();
+        ResourceModel model = request.getDesiredResourceState();
+        ManagedPolicyAttachmentProxy managedPolicyAttachmentProxy = new ManagedPolicyAttachmentProxy(proxy, proxyClient);
+        InlinePolicyProxy inlinePolicyProxy = new InlinePolicyProxy(proxy, proxyClient);
 
-        // TODO: Adjust Progress Chain according to your implementation
-        // https://github.com/aws-cloudformation/cloudformation-cli-java-plugin/blob/master/src/main/java/software/amazon/cloudformation/proxy/CallChain.java
+        return ProgressEvent.progress(request.getDesiredResourceState(), callbackContext)
+                .then(progress -> proxy.initiate("sso::update-permissionset", proxyClient, progress.getResourceModel(), progress.getCallbackContext())
+                        .translateToServiceRequest(Translator::translateToUpdateRequest)
+                        .makeServiceCall((updateRequest, client) -> {
+                            UpdatePermissionSetResponse response = proxy.injectCredentialsAndInvokeV2(updateRequest, client.client()::updatePermissionSet);
 
-        return ProgressEvent.progress(model, callbackContext)
-            // STEP 1 [first update/stabilize progress chain - required for resource update]
-            .then(progress ->
-                // STEP 1.0 [initialize a proxy context]
-                proxy.initiate("AWS-SSO-PermissionSet::Update", proxyClient, model, callbackContext)
+                            //Reset attempts for next action
+                            callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
+                            return response;
+                        })
+                        .handleError((describePermissionSetRequest, exception, client, resourceModel, context) -> {
+                            if (exception instanceof ResourceNotFoundException) {
+                                return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.NotFound);
+                            } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException || exception instanceof ConflictException) {
+                                if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
+                                    throw exception;
+                                }
+                                context.decrementRetryAttempts();
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            }
+                            throw exception;
+                        })
+                        .progress())
+                .then(progress -> {
+                    if (!callbackContext.isTagUpdateds()) {
+                        try {
+                            updateTags(model, proxy, proxyClient);
+                        } catch (ThrottlingException | InternalServerException | ConflictException e) {
+                            if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
+                                throw e;
+                            }
+                            callbackContext.decrementRetryAttempts();
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                        }
+                        //Reset attempts for next action
+                        callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
+                        callbackContext.setTagUpdateds(true);
+                    }
 
-                    // STEP 1.1 [TODO: construct a body of a request]
-                    .translateToServiceRequest(Translator::translateToFirstUpdateRequest)
-
-                    // STEP 1.2 [TODO: make an api call]
-                    .makeServiceCall(this::updateResource)
-
-                    // STEP 1.3 [TODO: stabilize step is not necessarily required but typically involves describing the resource until it is in a certain status, though it can take many forms]
-                    // stabilization step may or may not be needed after each API call
-                    // for more information -> https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/resource-type-test-contract.html
-                    .stabilize(this::stabilizedOnFirstUpdate)
-                    .progress())
-
-            // If your resource is provisioned through multiple API calls, then the following pattern is required (and might take as many postUpdate callbacks as necessary)
-            // STEP 2 [second update/stabilize progress chain]
-            .then(progress ->
-                    // STEP 2.0 [initialize a proxy context]
-                    proxy.initiate("AWS-SSO-PermissionSet::Update", proxyClient, model, callbackContext)
-
-                    // STEP 2.1 [TODO: construct a body of a request]
-                    .translateToServiceRequest(Translator::translateToSecondUpdateRequest)
-
-                    // STEP 2.2 [TODO: make an api call]
-                    .makeServiceCall(this::secondUpdate)
-                    .progress())
-
-            // STEP 3 [TODO: describe call/chain to return the resource model]
-            .then(progress -> new ReadHandler().handleRequest(proxy, request, callbackContext, proxyClient, logger));
+                    logger.log(String.format("%s tags have been successfully updated.", ResourceModel.TYPE_NAME));
+                    return progress;
+                })
+                .then(progress -> {
+                    if (!callbackContext.isManagedPolicyUpdated()) {
+                        //Update related policies
+                        try {
+                            managedPolicyAttachmentProxy.updateManagedPolicyAttachment(model.getInstanceArn(),
+                                    model.getPermissionSetArn(),
+                                    model.getManagedPolicies());
+                        } catch (ThrottlingException | InternalServerException | ConflictException e) {
+                            if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
+                                throw e;
+                            }
+                            callbackContext.decrementRetryAttempts();
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                        }
+                        //Reset attempts for next action
+                        callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
+                        callbackContext.setManagedPolicyUpdated(true);
+                    }
+                    logger.log(String.format("%s managed policies have been successfully updated.", ResourceModel.TYPE_NAME));
+                    return progress;
+                })
+                .then(progress -> {
+                    if (!callbackContext.isInlinePolicyUpdated()) {
+                        try {
+                            if (model.getInlinePolicy() != null && !model.getInlinePolicy().isEmpty()) {
+                                inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(), model.getInlinePolicy());
+                            } else {
+                                inlinePolicyProxy.deleteInlinePolicyFromPermissionSet(model.getInstanceArn(), model.getPermissionSetArn());
+                            }
+                        } catch (ThrottlingException | InternalServerException | ConflictException e) {
+                            if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
+                                throw e;
+                            }
+                            callbackContext.decrementRetryAttempts();
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                        }
+                        //Reset attempts for next action
+                        callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
+                        callbackContext.setInlinePolicyUpdated(true);
+                    }
+                    logger.log(String.format("%s inline policy has successfully been updated.", ResourceModel.TYPE_NAME));
+                    return progress;
+                })
+                .then(progress -> proxy.initiate("sso::provision-permissionset", proxyClient, progress.getResourceModel(), progress.getCallbackContext())
+                        .translateToServiceRequest(Translator::translateToProvsionPermissionSetRequest)
+                        .makeServiceCall((provisionRequest, client) -> proxy.injectCredentialsAndInvokeV2(provisionRequest, proxyClient.client()::provisionPermissionSet))
+                        .stabilize((provisionRequest, provisionResult, client, progressModel, context) -> {
+                            logger.log("Stabilizing the provision status.");
+                            String statusTrackId = provisionResult.permissionSetProvisioningStatus().requestId();
+                            DescribePermissionSetProvisioningStatusRequest statusRequest = DescribePermissionSetProvisioningStatusRequest.builder()
+                                    .provisionPermissionSetRequestId(statusTrackId)
+                                    .instanceArn(progressModel.getInstanceArn())
+                                    .build();
+                            DescribePermissionSetProvisioningStatusResponse statusResult
+                                    = proxy.injectCredentialsAndInvokeV2(statusRequest, client.client()::describePermissionSetProvisioningStatus);
+                            if (statusResult.permissionSetProvisioningStatus().status().equals(StatusValues.SUCCEEDED)) {
+                                logger.log(String.format("%s [%s] has been stabilized.", ResourceModel.TYPE_NAME, model.getPrimaryIdentifier()));
+                                return true;
+                            } else if (statusResult.permissionSetProvisioningStatus().status().equals(StatusValues.FAILED)) {
+                                String failedReason = statusResult.permissionSetProvisioningStatus().failureReason();
+                                throw new CfnGeneralServiceException(String.format(FAILED_WORKFLOW_REQUEST, statusTrackId, failedReason));
+                            }
+                            return false;
+                        })
+                        .handleError((awsRequest, exception, client, resourceModel, context) -> {
+                            if (exception instanceof ConflictException || exception instanceof ThrottlingException) {
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 300, model);
+                            } else if (exception instanceof ResourceNotFoundException) {
+                                return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
+                            } else if (exception instanceof InternalServerException) {
+                                if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
+                                    throw exception;
+                                }
+                                context.decrementRetryAttempts();
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            }
+                            throw exception;
+                        })
+                        .progress()
+                )
+                .then(progress -> new ReadHandler().handleRequest(proxy, request, callbackContext, proxyClient, logger));
     }
 
-    /**
-     * Implement client invocation of the update request through the proxyClient, which is already initialised with
-     * caller credentials, correct region and retry settings
-     * @param awsRequest the aws service request to update a resource
-     * @param proxyClient the aws service client to make the call
-     * @return update resource response
-     */
-    private AwsResponse updateResource(
-        final AwsRequest awsRequest,
-        final ProxyClient<SdkClient> proxyClient) {
-        AwsResponse awsResponse = null;
-        try {
+    private void updateTags(ResourceModel model, AmazonWebServicesClientProxy proxy, ProxyClient<SsoAdminClient> proxyClient) {
+        Set<Tag> previousTags = new HashSet<>(getResourceTags(model.getInstanceArn(),
+                model.getPermissionSetArn(),
+                proxy,
+                proxyClient));
+        Set<Tag> newTags = new HashSet<>(Translator.ConvertToSSOTag(model.getTags()));
 
-            // TODO: put your update resource code here
+        final Set<Tag> tagsToRemove = Sets.difference(previousTags, newTags);
+        final Set<Tag> tagsToAdd  = Sets.difference(newTags, previousTags);
 
-        } catch (final AwsServiceException e) {
-            /*
-             * While the handler contract states that the handler must always return a progress event,
-             * you may throw any instance of BaseHandlerException, as the wrapper map it to a progress event.
-             * Each BaseHandlerException maps to a specific error code, and you should map service exceptions as closely as possible
-             * to more specific error codes
-             */
-            throw new CfnGeneralServiceException(ResourceModel.TYPE_NAME, e);
+        if (!tagsToRemove.isEmpty()) {
+            List<String> tagKeys = new ArrayList<>();
+            for (Tag tag : tagsToRemove) {
+                tagKeys.add(tag.key());
+            }
+            proxy.injectCredentialsAndInvokeV2(Translator.translateToUntagResourceRequest(model, tagKeys),
+                    proxyClient.client()::untagResource);
         }
-
-        logger.log(String.format("%s has successfully been updated.", ResourceModel.TYPE_NAME));
-        return awsResponse;
-    }
-
-    /**
-     * If your resource requires some form of stabilization (e.g. service does not provide strong consistency), you will need to ensure that your code
-     * accounts for any potential issues, so that a subsequent read/update requests will not cause any conflicts (e.g. NotFoundException/InvalidRequestException)
-     * for more information -> https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/resource-type-test-contract.html
-     * @param awsResponse the aws service  update resource response
-     * @param proxyClient the aws service client to make the call
-     * @param model resource model
-     * @param callbackContext callback context
-     * @return boolean state of stabilized or not
-     */
-    private boolean stabilizedOnFirstUpdate(
-        final AwsRequest awsRequest,
-        final AwsResponse awsResponse,
-        final ProxyClient<SdkClient> proxyClient,
-        final ResourceModel model,
-        final CallbackContext callbackContext) {
-
-        // TODO: put your stabilization code here
-
-        final boolean stabilized = true;
-
-        logger.log(String.format("%s [%s] update has stabilized: %s", ResourceModel.TYPE_NAME, model.getPrimaryIdentifier(), stabilized));
-        return stabilized;
-    }
-
-    /**
-     * If your resource is provisioned through multiple API calls, you will need to apply each subsequent update
-     * step in a discrete call/stabilize chain to ensure the entire resource is provisioned as intended.
-     * @param awsRequest the aws service request to update a resource
-     * @param proxyClient the aws service client to make the call
-     * @return update resource response
-     */
-    private AwsResponse secondUpdate(
-        final AwsRequest awsRequest,
-        final ProxyClient<SdkClient> proxyClient) {
-        AwsResponse awsResponse = null;
-        try {
-
-            // TODO: put your post update resource code here
-
-        } catch (final AwsServiceException e) {
-            /*
-             * While the handler contract states that the handler must always return a progress event,
-             * you may throw any instance of BaseHandlerException, as the wrapper map it to a progress event.
-             * Each BaseHandlerException maps to a specific error code, and you should map service exceptions as closely as possible
-             * to more specific error codes
-             */
-            throw new CfnGeneralServiceException(ResourceModel.TYPE_NAME, e);
+        if (!tagsToAdd.isEmpty()) {
+            proxy.injectCredentialsAndInvokeV2(Translator.translateToTagResourceRequest(model, new ArrayList<>(tagsToAdd)),
+                    proxyClient.client()::tagResource);
         }
-
-        logger.log(String.format("%s has successfully been updated.", ResourceModel.TYPE_NAME));
-        return awsResponse;
     }
 }
