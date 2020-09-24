@@ -20,4 +20,3 @@ Resources:
       Handler: software.amazon.sso.assignment.HandlerWrapper::testEntrypoint
       Runtime: java8
       CodeUri: ./target/aws-sso-assignment-1.0.jar
-
