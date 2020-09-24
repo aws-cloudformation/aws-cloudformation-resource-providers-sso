@@ -1,11 +1,13 @@
 ## My Project
 
-TODO: Fill this README out!
+The CloudFormation Resource Provider Package For AWS SSO.
 
-Be sure to:
+Currently there are two resources available:
 
-* Change the title in this README
-* Edit your repository description on GitHub
+* AWS::SSO::PermissionSet
+* AWS::SSO::Assignment
+
+For CloudFormation guide, please check our public doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/AWS_SSO.html
 
 ## License
 
