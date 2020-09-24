@@ -73,21 +73,21 @@
   "handlers": {
     "create": {
       "permissions": [
-        "sso: CreateAccountAssignment",
-        "sso: DescribeAccountAssignmentCreationStatus",
-        "sso: ListAccountAssignments"
+        "sso:CreateAccountAssignment",
+        "sso:DescribeAccountAssignmentCreationStatus",
+        "sso:ListAccountAssignments"
       ]
     },
     "read": {
       "permissions": [
-        "sso: ListAccountAssignments"
+        "sso:ListAccountAssignments"
       ]
     },
     "delete": {
       "permissions": [
-        "sso: ListAccountAssignments",
-        "sso: DeleteAccountAssignment",
-        "sso: DescribeAccountAssignmentDeletionStatus"
+        "sso:ListAccountAssignments",
+        "sso:DeleteAccountAssignment",
+        "sso:DescribeAccountAssignmentDeletionStatus"
       ]
     },
     "update": {
