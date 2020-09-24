@@ -1,4 +1,4 @@
-## My Project
+## aws-cloudformation-resource-providers-sso
 
 The CloudFormation Resource Provider Package For AWS SSO.
 
