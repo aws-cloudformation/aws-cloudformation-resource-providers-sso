@@ -35,11 +35,11 @@ public class UpdateHandler extends BaseHandlerStd {
     private Logger logger;
 
     protected ProgressEvent<ResourceModel, CallbackContext> handleRequest(
-        final AmazonWebServicesClientProxy proxy,
-        final ResourceHandlerRequest<ResourceModel> request,
-        final CallbackContext callbackContext,
-        final ProxyClient<SsoAdminClient> proxyClient,
-        final Logger logger) {
+            final AmazonWebServicesClientProxy proxy,
+            final ResourceHandlerRequest<ResourceModel> request,
+            final CallbackContext callbackContext,
+            final ProxyClient<SsoAdminClient> proxyClient,
+            final Logger logger) {
 
         this.logger = logger;
 
@@ -65,7 +65,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                     throw exception;
                                 }
                                 context.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                             }
                             throw exception;
                         })
@@ -79,7 +79,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                 throw e;
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
                         //Reset attempts for next action
                         callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
@@ -101,7 +101,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                 throw e;
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
                         //Reset attempts for next action
                         callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
@@ -123,7 +123,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                 throw e;
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
                         //Reset attempts for next action
                         callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
@@ -146,6 +146,8 @@ public class UpdateHandler extends BaseHandlerStd {
                                     = proxy.injectCredentialsAndInvokeV2(statusRequest, client.client()::describePermissionSetProvisioningStatus);
                             if (statusResult.permissionSetProvisioningStatus().status().equals(StatusValues.SUCCEEDED)) {
                                 logger.log(String.format("%s [%s] has been stabilized.", ResourceModel.TYPE_NAME, model.getPrimaryIdentifier()));
+                                //Reset the retry attempts for read handler
+                                callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
                                 return true;
                             } else if (statusResult.permissionSetProvisioningStatus().status().equals(StatusValues.FAILED)) {
                                 String failedReason = statusResult.permissionSetProvisioningStatus().failureReason();
@@ -163,7 +165,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                     throw exception;
                                 }
                                 context.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                             }
                             throw exception;
                         })

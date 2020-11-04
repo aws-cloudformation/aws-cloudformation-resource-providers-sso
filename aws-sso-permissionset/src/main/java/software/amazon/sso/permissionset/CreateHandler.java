@@ -22,11 +22,11 @@ public class CreateHandler extends BaseHandlerStd {
     private Logger logger;
 
     protected ProgressEvent<ResourceModel, CallbackContext> handleRequest(
-        final AmazonWebServicesClientProxy proxy,
-        final ResourceHandlerRequest<ResourceModel> request,
-        final CallbackContext callbackContext,
-        final ProxyClient<SsoAdminClient> proxyClient,
-        final Logger logger) {
+            final AmazonWebServicesClientProxy proxy,
+            final ResourceHandlerRequest<ResourceModel> request,
+            final CallbackContext callbackContext,
+            final ProxyClient<SsoAdminClient> proxyClient,
+            final Logger logger) {
 
         this.logger = logger;
         ManagedPolicyAttachmentProxy managedPolicyAttachmentProxy = new ManagedPolicyAttachmentProxy(proxy, proxyClient);
@@ -51,7 +51,7 @@ public class CreateHandler extends BaseHandlerStd {
                                     throw exception;
                                 }
                                 context.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                             }
                             throw exception;
                         })
@@ -80,7 +80,7 @@ public class CreateHandler extends BaseHandlerStd {
                                 throw e;
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
                         callbackContext.setManagedPolicyUpdated(true);
                         //Reset the retry attempts for next action
@@ -101,10 +101,12 @@ public class CreateHandler extends BaseHandlerStd {
                                     throw e;
                                 }
                                 callbackContext.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                             }
                         }
                         callbackContext.setInlinePolicyUpdated(true);
+                        //Reset the retry attempts for read handler
+                        callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
                     }
                     logger.log("Inline policy added successfully.");
                     return progress;

@@ -1,6 +1,7 @@
 package software.amazon.sso.assignment;
 
 import software.amazon.awssdk.services.ssoadmin.SsoAdminClient;
+import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
 import software.amazon.cloudformation.exceptions.CfnNotFoundException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
 import software.amazon.cloudformation.proxy.HandlerErrorCode;
@@ -25,10 +26,18 @@ public class ReadHandler extends BaseHandlerStd {
         AssignmentProxy assignmentProxy = new AssignmentProxy(proxy, proxyClient, logger);
 
         ResourceModel model = request.getDesiredResourceState();
-        if (!assignmentProxy.checkIfAssignmentAlreadyExist(model.getInstanceArn(), model.getTargetId(), model.getPermissionSetArn(), model.getPrincipalId(), model.getPrincipalType())) {
-            return ProgressEvent.defaultFailureHandler(new CfnNotFoundException(ResourceModel.TYPE_NAME, "Assignment not exists for given entity."), HandlerErrorCode.NotFound);
+        try {
+            if (!assignmentProxy.checkIfAssignmentAlreadyExist(model.getInstanceArn(), model.getTargetId(), model.getPermissionSetArn(), model.getPrincipalId(), model.getPrincipalType())) {
+                return ProgressEvent.defaultFailureHandler(new CfnNotFoundException(ResourceModel.TYPE_NAME, "Assignment not exists for given entity."), HandlerErrorCode.NotFound);
+            }
+            logger.log(String.format("%s has successfully been read.", ResourceModel.TYPE_NAME));
+            return ProgressEvent.success(model, callbackContext);
+        } catch (ThrottlingException e) {
+            if (callbackContext.getRetryAttempts() == 0) {
+                throw e;
+            }
+            callbackContext.decrementRetryAttempts();
+            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
         }
-        logger.log(String.format("%s has successfully been read.", ResourceModel.TYPE_NAME));
-        return ProgressEvent.success(model, callbackContext);
     }
 }

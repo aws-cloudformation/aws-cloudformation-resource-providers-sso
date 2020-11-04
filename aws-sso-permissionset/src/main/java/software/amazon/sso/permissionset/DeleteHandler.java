@@ -45,7 +45,7 @@ public class DeleteHandler extends BaseHandlerStd {
                                 throw exception;
                             }
                             context.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
                         throw exception;
                     })
