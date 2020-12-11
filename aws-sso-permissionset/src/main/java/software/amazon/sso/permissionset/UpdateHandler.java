@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static software.amazon.sso.permissionset.Translator.processInlinePolicy;
 import static software.amazon.sso.permissionset.utils.Constants.FAILED_WORKFLOW_REQUEST;
 import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS;
 import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS_ZERO;
@@ -42,6 +43,11 @@ public class UpdateHandler extends BaseHandlerStd {
             final Logger logger) {
 
         this.logger = logger;
+
+        if (!callbackContext.isHandlerInvoked()) {
+            callbackContext.setHandlerInvoked(true);
+            callbackContext.setRetryAttempts(RETRY_ATTEMPTS);
+        }
 
         ResourceModel model = request.getDesiredResourceState();
         ManagedPolicyAttachmentProxy managedPolicyAttachmentProxy = new ManagedPolicyAttachmentProxy(proxy, proxyClient);
@@ -113,8 +119,9 @@ public class UpdateHandler extends BaseHandlerStd {
                 .then(progress -> {
                     if (!callbackContext.isInlinePolicyUpdated()) {
                         try {
-                            if (model.getInlinePolicy() != null && !model.getInlinePolicy().isEmpty()) {
-                                inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(), model.getInlinePolicy());
+                            String inlinePolicy = processInlinePolicy(model.getInlinePolicy());
+                            if (inlinePolicy != null && !inlinePolicy.isEmpty()) {
+                                inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(),inlinePolicy);
                             } else {
                                 inlinePolicyProxy.deleteInlinePolicyFromPermissionSet(model.getInstanceArn(), model.getPermissionSetArn());
                             }

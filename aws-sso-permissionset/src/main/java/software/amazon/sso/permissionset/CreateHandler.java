@@ -15,6 +15,7 @@ import software.amazon.cloudformation.proxy.ResourceHandlerRequest;
 import software.amazon.sso.permissionset.actionProxy.InlinePolicyProxy;
 import software.amazon.sso.permissionset.actionProxy.ManagedPolicyAttachmentProxy;
 
+import static software.amazon.sso.permissionset.Translator.processInlinePolicy;
 import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS;
 import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS_ZERO;
 
@@ -22,11 +23,11 @@ public class CreateHandler extends BaseHandlerStd {
     private Logger logger;
 
     protected ProgressEvent<ResourceModel, CallbackContext> handleRequest(
-            final AmazonWebServicesClientProxy proxy,
-            final ResourceHandlerRequest<ResourceModel> request,
-            final CallbackContext callbackContext,
-            final ProxyClient<SsoAdminClient> proxyClient,
-            final Logger logger) {
+        final AmazonWebServicesClientProxy proxy,
+        final ResourceHandlerRequest<ResourceModel> request,
+        final CallbackContext callbackContext,
+        final ProxyClient<SsoAdminClient> proxyClient,
+        final Logger logger) {
 
         this.logger = logger;
         ManagedPolicyAttachmentProxy managedPolicyAttachmentProxy = new ManagedPolicyAttachmentProxy(proxy, proxyClient);
@@ -93,9 +94,10 @@ public class CreateHandler extends BaseHandlerStd {
                     ResourceModel model = progress.getResourceModel();
 
                     if (!callbackContext.isInlinePolicyUpdated()) {
-                        if (model.getInlinePolicy() != null && !model.getInlinePolicy().isEmpty()) {
+                        String inlinePolicy = processInlinePolicy(model.getInlinePolicy());
+                        if (inlinePolicy != null && !inlinePolicy.isEmpty()) {
                             try {
-                                inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(), model.getInlinePolicy());
+                                inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(), inlinePolicy);
                             } catch (ThrottlingException | InternalServerException | ConflictException e) {
                                 if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
                                     throw e;

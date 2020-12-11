@@ -85,7 +85,10 @@
     },
     "InlinePolicy": {
       "description": "The inline policy to put in permission set.",
-      "type": "string",
+      "type": [
+        "object",
+        "string"
+      ],
       "pattern": "[\\w+=,.@-]+",
       "minLength": 1,
       "maxLength": 10240
