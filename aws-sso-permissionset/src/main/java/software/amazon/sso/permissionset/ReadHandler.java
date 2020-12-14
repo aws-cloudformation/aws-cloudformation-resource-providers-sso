@@ -85,7 +85,7 @@ public class ReadHandler extends BaseHandlerStd {
                         }
                         context.decrementRetryAttempts();
 
-                        return ProgressEvent.defaultInProgressHandler(progress.getCallbackContext(), 0, outputModel);
+                        return ProgressEvent.defaultInProgressHandler(progress.getCallbackContext(), 5, outputModel);
                     }
                     return ProgressEvent.defaultSuccessHandler(outputModel);
                 });

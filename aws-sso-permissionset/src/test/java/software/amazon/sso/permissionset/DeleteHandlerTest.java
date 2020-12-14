@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.ssoadmin.SsoAdminClient;
 import software.amazon.awssdk.services.ssoadmin.model.DeletePermissionSetRequest;
 import software.amazon.awssdk.services.ssoadmin.model.ResourceNotFoundException;
+import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
 import software.amazon.cloudformation.proxy.HandlerErrorCode;
 import software.amazon.cloudformation.proxy.OperationStatus;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static software.amazon.sso.permissionset.TestConstants.TEST_PERMISSION_SET_ARN;
 import static software.amazon.sso.permissionset.TestConstants.TEST_SSO_INSTANCE_ARN;
+import static software.amazon.sso.permissionset.TestConstants.THROTTLING_MESSAGE;
 
 @ExtendWith(MockitoExtension.class)
 public class DeleteHandlerTest extends AbstractTestBase {
@@ -61,6 +63,37 @@ public class DeleteHandlerTest extends AbstractTestBase {
         assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
         assertThat(response.getResourceModel()).isEqualTo(null);
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_Deletion_Retryable_Exception() {
+        final DeleteHandler handler = new DeleteHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+        DeletePermissionSetRequest deletePermissionSetRequest = DeletePermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(deletePermissionSetRequest, proxyClient.client()::deletePermissionSet))
+                .thenThrow(ThrottlingException.builder().message(THROTTLING_MESSAGE).build());
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(5);
+        assertThat(response.getResourceModel()).isEqualTo(model);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
         assertThat(response.getErrorCode()).isNull();

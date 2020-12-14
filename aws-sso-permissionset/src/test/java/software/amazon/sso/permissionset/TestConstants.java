@@ -1,5 +1,9 @@
 package software.amazon.sso.permissionset;
 
+import com.google.common.collect.ImmutableMap;
+
+import java.util.Map;
+
 public class TestConstants {
     public final static String TEST_PERMISSION_SET_NAME = "testPermissionSet";
     public final static String TEST_PERMISSION_SET_DESCRIPTION = "This is permission set for test";
@@ -12,4 +16,9 @@ public class TestConstants {
     public final static String TEST_READONLY_POLICY = "arn:aws:iam::aws:policy/ReadOnly";
     public final static String TEST_INLINE_POLICY = "Inline policy";
     public final static String TEST_INLINE_POLICY_2 = "Inline policy2";
+    public final static String THROTTLING_MESSAGE = "Operation Throttled.";
+    public static final Map<String, Object> SAMPLE_DOCUMENT_CONTENT = ImmutableMap.of(
+            "schemaVersion", "1.2",
+            "description", "Join instances to an AWS Directory Service domain."
+    );
 }

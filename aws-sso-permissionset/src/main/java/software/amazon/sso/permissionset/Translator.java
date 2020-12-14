@@ -167,7 +167,7 @@ public class Translator {
       return null;
     }
     for (Tag tag : tags) {
-      ssoPermissionSetTags.add(new software.amazon.sso.permissionset.Tag().builder()
+      ssoPermissionSetTags.add(software.amazon.sso.permissionset.Tag.builder()
               .key(tag.key())
               .value(tag.value())
               .build());
