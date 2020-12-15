@@ -49,12 +49,12 @@ public class CreateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.AlreadyExists);
                             } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException) {
                                 if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    throw exception;
+                                    return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                                 }
                                 context.decrementRetryAttempts();
                                 return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                             }
-                            throw exception;
+                            return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                         })
                         .done((createPermissionSetRequest, createPermissionSetResponse, proxyInvocation, model, context) -> {
                             if (!StringUtils.isNullOrEmpty(createPermissionSetResponse.permissionSet().permissionSetArn())) {
@@ -78,7 +78,7 @@ public class CreateHandler extends BaseHandlerStd {
                                     model.getManagedPolicies());
                         } catch (ThrottlingException | InternalServerException | ConflictException e) {
                             if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                throw e;
+                                return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                             }
                             callbackContext.decrementRetryAttempts();
                             return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
@@ -100,7 +100,7 @@ public class CreateHandler extends BaseHandlerStd {
                                 inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(), inlinePolicy);
                             } catch (ThrottlingException | InternalServerException | ConflictException e) {
                                 if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    throw e;
+                                    return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                                 }
                                 callbackContext.decrementRetryAttempts();
                                 return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);

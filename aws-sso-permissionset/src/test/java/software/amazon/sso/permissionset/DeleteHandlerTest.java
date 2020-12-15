@@ -6,8 +6,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.ssoadmin.SsoAdminClient;
+import software.amazon.awssdk.services.ssoadmin.model.ConflictException;
 import software.amazon.awssdk.services.ssoadmin.model.DeletePermissionSetRequest;
+import software.amazon.awssdk.services.ssoadmin.model.InternalServerException;
 import software.amazon.awssdk.services.ssoadmin.model.ResourceNotFoundException;
+import software.amazon.awssdk.services.ssoadmin.model.ServiceQuotaExceededException;
 import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
 import software.amazon.cloudformation.proxy.HandlerErrorCode;
@@ -21,6 +24,7 @@ import java.time.Duration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static software.amazon.sso.permissionset.TestConstants.ISE_MESSAGE;
 import static software.amazon.sso.permissionset.TestConstants.TEST_PERMISSION_SET_ARN;
 import static software.amazon.sso.permissionset.TestConstants.TEST_SSO_INSTANCE_ARN;
 import static software.amazon.sso.permissionset.TestConstants.THROTTLING_MESSAGE;
@@ -69,7 +73,7 @@ public class DeleteHandlerTest extends AbstractTestBase {
     }
 
     @Test
-    public void handleRequest_Deletion_Retryable_Exception() {
+    public void handleRequest_Deletion_Retryable_Throttling() {
         final DeleteHandler handler = new DeleteHandler();
 
         final ResourceModel model = ResourceModel.builder()
@@ -97,6 +101,134 @@ public class DeleteHandlerTest extends AbstractTestBase {
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
         assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_Deletion_Retryable_Conflict() {
+        final DeleteHandler handler = new DeleteHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+        DeletePermissionSetRequest deletePermissionSetRequest = DeletePermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(deletePermissionSetRequest, proxyClient.client()::deletePermissionSet))
+                .thenThrow(ConflictException.builder().message(ISE_MESSAGE).build());
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(5);
+        assertThat(response.getResourceModel()).isEqualTo(model);
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_Deletion_Retryable_ISE() {
+        final DeleteHandler handler = new DeleteHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+        DeletePermissionSetRequest deletePermissionSetRequest = DeletePermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(deletePermissionSetRequest, proxyClient.client()::deletePermissionSet))
+                .thenThrow(InternalServerException.builder().message(ISE_MESSAGE).build());
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(5);
+        assertThat(response.getResourceModel()).isEqualTo(model);
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_Deletion_Retryable_LimitExceed() {
+        final DeleteHandler handler = new DeleteHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+        DeletePermissionSetRequest deletePermissionSetRequest = DeletePermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(deletePermissionSetRequest, proxyClient.client()::deletePermissionSet))
+                .thenThrow(InternalServerException.builder().message(ISE_MESSAGE).build());
+
+        CallbackContext context = new CallbackContext();
+        context.resetRetryAttempts(0);
+        context.setHandlerInvoked(true);
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, context, proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.FAILED);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isNull();
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).contains(ISE_MESSAGE);
+        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.InternalFailure);
+    }
+
+    @Test
+    public void handleRequest_Deletion_NonRetryable() {
+        final DeleteHandler handler = new DeleteHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+        DeletePermissionSetRequest deletePermissionSetRequest = DeletePermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(deletePermissionSetRequest, proxyClient.client()::deletePermissionSet))
+                .thenThrow(ServiceQuotaExceededException.builder().message("Resource not found").build());
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.FAILED);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isNull();
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).contains("Resource not found");
+        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.GeneralServiceException);
     }
 
     @Test

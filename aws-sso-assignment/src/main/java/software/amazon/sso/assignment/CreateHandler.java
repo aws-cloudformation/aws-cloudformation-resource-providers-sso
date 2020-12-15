@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
 import software.amazon.cloudformation.exceptions.CfnAlreadyExistsException;
 import software.amazon.cloudformation.exceptions.CfnGeneralServiceException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
+import software.amazon.cloudformation.proxy.HandlerErrorCode;
 import software.amazon.cloudformation.proxy.Logger;
 import software.amazon.cloudformation.proxy.ProgressEvent;
 import software.amazon.cloudformation.proxy.ProxyClient;
@@ -18,9 +19,9 @@ import software.amazon.cloudformation.proxy.ResourceHandlerRequest;
 import software.amazon.sso.assignment.actionProxy.AssignmentProxy;
 
 import static software.amazon.sso.assignment.Translator.translateToDescribeCreationStatusRequest;
-import static software.amazon.sso.assignment.util.Constants.FAILED_WORKFLOW_REQUEST;
-import static software.amazon.sso.assignment.util.Constants.RETRY_ATTEMPTS;
-import static software.amazon.sso.assignment.util.Constants.RETRY_ATTEMPTS_ZERO;
+import static software.amazon.sso.assignment.Constants.FAILED_WORKFLOW_REQUEST;
+import static software.amazon.sso.assignment.Constants.RETRY_ATTEMPTS;
+import static software.amazon.sso.assignment.Constants.RETRY_ATTEMPTS_ZERO;
 
 
 public class CreateHandler extends BaseHandlerStd {
@@ -77,12 +78,12 @@ public class CreateHandler extends BaseHandlerStd {
                                         return ProgressEvent.defaultInProgressHandler(callbackContext, 180, resourceModel);
                                     } else if (exception instanceof InternalServerException) {
                                         if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                            throw exception;
+                                            return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                                         }
                                         context.decrementRetryAttempts();
                                         return ProgressEvent.defaultInProgressHandler(callbackContext, 5, resourceModel);
                                     }
-                                    throw exception;
+                                    return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                                 })
                                 .progress()
                 )

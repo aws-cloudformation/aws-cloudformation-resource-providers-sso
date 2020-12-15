@@ -17,6 +17,7 @@ public class TestConstants {
     public final static String TEST_INLINE_POLICY = "Inline policy";
     public final static String TEST_INLINE_POLICY_2 = "Inline policy2";
     public final static String THROTTLING_MESSAGE = "Operation Throttled.";
+    public final static String ISE_MESSAGE = "There is an internal failure.";
     public static final Map<String, Object> SAMPLE_DOCUMENT_CONTENT = ImmutableMap.of(
             "schemaVersion", "1.2",
             "description", "Join instances to an AWS Directory Service domain."

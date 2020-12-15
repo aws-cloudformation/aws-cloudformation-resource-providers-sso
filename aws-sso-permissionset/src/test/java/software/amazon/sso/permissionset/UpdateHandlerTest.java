@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.ssoadmin.SsoAdminClient;
 import software.amazon.awssdk.services.ssoadmin.model.AttachManagedPolicyToPermissionSetRequest;
 import software.amazon.awssdk.services.ssoadmin.model.AttachedManagedPolicy;
+import software.amazon.awssdk.services.ssoadmin.model.ConflictException;
 import software.amazon.awssdk.services.ssoadmin.model.DeleteInlinePolicyFromPermissionSetRequest;
 import software.amazon.awssdk.services.ssoadmin.model.DescribePermissionSetProvisioningStatusRequest;
 import software.amazon.awssdk.services.ssoadmin.model.DescribePermissionSetProvisioningStatusResponse;
@@ -29,6 +30,7 @@ import software.amazon.awssdk.services.ssoadmin.model.ProvisionPermissionSetResp
 import software.amazon.awssdk.services.ssoadmin.model.ProvisionTargetType;
 import software.amazon.awssdk.services.ssoadmin.model.PutInlinePolicyToPermissionSetRequest;
 import software.amazon.awssdk.services.ssoadmin.model.ResourceNotFoundException;
+import software.amazon.awssdk.services.ssoadmin.model.ServiceQuotaExceededException;
 import software.amazon.awssdk.services.ssoadmin.model.StatusValues;
 import software.amazon.awssdk.services.ssoadmin.model.Tag;
 import software.amazon.awssdk.services.ssoadmin.model.TagResourceRequest;
@@ -58,6 +60,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
+import static software.amazon.sso.permissionset.TestConstants.ISE_MESSAGE;
 import static software.amazon.sso.permissionset.TestConstants.TEST_ADMIN_MANAGED_POLICY;
 import static software.amazon.sso.permissionset.TestConstants.TEST_INLINE_POLICY_2;
 import static software.amazon.sso.permissionset.TestConstants.TEST_PERMISSION_SET_ARN;
@@ -195,10 +198,14 @@ public class UpdateHandlerTest extends AbstractTestBase {
                 .provisionPermissionSetRequestId(TEST_REQUEST_ID)
                 .instanceArn(TEST_SSO_INSTANCE_ARN)
                 .build();
+        DescribePermissionSetProvisioningStatusResponse describePsProvisionInProgressResponse = DescribePermissionSetProvisioningStatusResponse.builder()
+                .permissionSetProvisioningStatus(PermissionSetProvisioningStatus.builder().status(StatusValues.IN_PROGRESS).requestId(TEST_REQUEST_ID).build())
+                .build();
         DescribePermissionSetProvisioningStatusResponse describePsProvisionResponse = DescribePermissionSetProvisioningStatusResponse.builder()
                 .permissionSetProvisioningStatus(PermissionSetProvisioningStatus.builder().status(StatusValues.SUCCEEDED).requestId(TEST_REQUEST_ID).build())
                 .build();
         when(proxy.injectCredentialsAndInvokeV2(decribePsProvisionRequest, proxyClient.client()::describePermissionSetProvisioningStatus))
+                .thenReturn(describePsProvisionInProgressResponse)
                 .thenReturn(describePsProvisionResponse);
 
         final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
@@ -388,10 +395,136 @@ public class UpdateHandlerTest extends AbstractTestBase {
         assertThat(response.getErrorCode()).isNull();
     }
 
-    ////////////////////////////////////
+    @Test
+    public void handleRequest_Steps_Skipped() {
+        final UpdateHandler handler = new UpdateHandler();
+
+        List<software.amazon.sso.permissionset.Tag> tags = new ArrayList<>();
+
+        software.amazon.sso.permissionset.Tag tag = new software.amazon.sso.permissionset.Tag();
+        tag.setKey("key");
+        tag.setValue("value");
+        tags.add(tag);
+        List<Tag> ssoTags = new ArrayList<>();
+        ssoTags.add(Tag.builder().key("key1").value("value1").build());
+
+        List<String> newManagedPolicyArns = new ArrayList<>();
+        newManagedPolicyArns.add(TEST_ADMIN_MANAGED_POLICY);
+        List<AttachedManagedPolicy> newManagedPolicies = new ArrayList<>();
+        newManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_ADMIN_MANAGED_POLICY).build());
+
+        final ResourceModel inputModel = ResourceModel.builder()
+                .name(TEST_PERMISSION_SET_NAME)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .relayStateType(TEST_RELAY_STATE)
+                .managedPolicies(newManagedPolicyArns)
+                .inlinePolicy(TEST_INLINE_POLICY_2)
+                .tags(tags)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(inputModel)
+                .build();
+
+        PermissionSet testPermissionSet = PermissionSet.builder()
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .name(TEST_PERMISSION_SET_NAME)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .relayState(TEST_RELAY_STATE)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .build();
+
+        DescribePermissionSetRequest psDescribeRequest = DescribePermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        DescribePermissionSetResponse psDescribeResult = DescribePermissionSetResponse.builder()
+                .permissionSet(testPermissionSet)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(psDescribeRequest, proxyClient.client()::describePermissionSet))
+                .thenReturn(psDescribeResult);
+
+        ListManagedPoliciesInPermissionSetRequest listAPRequest = ListManagedPoliciesInPermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        ListManagedPoliciesInPermissionSetResponse listAttachedPoliciesResponse = ListManagedPoliciesInPermissionSetResponse.builder()
+                .attachedManagedPolicies(newManagedPolicies)
+                .build();
+        ListManagedPoliciesInPermissionSetResponse listUpdatedManagedPoliciesResponse = ListManagedPoliciesInPermissionSetResponse.builder()
+                .attachedManagedPolicies(newManagedPolicies)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(listAPRequest, proxyClient.client()::listManagedPoliciesInPermissionSet))
+                .thenReturn(listAttachedPoliciesResponse)
+                .thenReturn(listUpdatedManagedPoliciesResponse);
+
+        GetInlinePolicyForPermissionSetRequest getIPRequest = GetInlinePolicyForPermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        GetInlinePolicyForPermissionSetResponse getIPResult = GetInlinePolicyForPermissionSetResponse.builder()
+                .inlinePolicy(TEST_INLINE_POLICY_2)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(getIPRequest, proxyClient.client()::getInlinePolicyForPermissionSet))
+                .thenReturn(getIPResult);
+
+        ProvisionPermissionSetRequest provisionPsRequest = ProvisionPermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .targetType(ProvisionTargetType.ALL_PROVISIONED_ACCOUNTS)
+                .build();
+        ProvisionPermissionSetResponse provisionPsResponse = ProvisionPermissionSetResponse.builder()
+                .permissionSetProvisioningStatus(PermissionSetProvisioningStatus.builder().status(StatusValues.IN_PROGRESS).requestId(TEST_REQUEST_ID).build())
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(provisionPsRequest, proxyClient.client()::provisionPermissionSet))
+                .thenReturn(provisionPsResponse);
+
+        DescribePermissionSetProvisioningStatusRequest decribePsProvisionRequest = DescribePermissionSetProvisioningStatusRequest.builder()
+                .provisionPermissionSetRequestId(TEST_REQUEST_ID)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .build();
+        DescribePermissionSetProvisioningStatusResponse describePsProvisionInProgressResponse = DescribePermissionSetProvisioningStatusResponse.builder()
+                .permissionSetProvisioningStatus(PermissionSetProvisioningStatus.builder().status(StatusValues.IN_PROGRESS).requestId(TEST_REQUEST_ID).build())
+                .build();
+        DescribePermissionSetProvisioningStatusResponse describePsProvisionResponse = DescribePermissionSetProvisioningStatusResponse.builder()
+                .permissionSetProvisioningStatus(PermissionSetProvisioningStatus.builder().status(StatusValues.SUCCEEDED).requestId(TEST_REQUEST_ID).build())
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(decribePsProvisionRequest, proxyClient.client()::describePermissionSetProvisioningStatus))
+                .thenReturn(describePsProvisionInProgressResponse)
+                .thenReturn(describePsProvisionResponse);
+
+        CallbackContext context = new CallbackContext();
+        context.setHandlerInvoked(true);
+        context.setTagUpdated(true);
+        context.setManagedPolicyUpdated(true);
+        context.setInlinePolicyUpdated(true);
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, context, proxyClient, logger);
+
+        verify(proxyClient.client(), never()).untagResource(any(UntagResourceRequest.class));
+
+        verify(proxyClient.client(), never()).tagResource(any(TagResourceRequest.class));
+
+        verify(proxyClient.client(), never()).detachManagedPolicyFromPermissionSet(any(DetachManagedPolicyFromPermissionSetRequest.class));
+
+        verify(proxyClient.client(), never()).attachManagedPolicyToPermissionSet(any(AttachManagedPolicyToPermissionSetRequest.class));
+
+        verify(proxyClient.client(), never()).putInlinePolicyToPermissionSet(any(PutInlinePolicyToPermissionSetRequest.class));
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+    }
 
     @Test
-    public void handleRequest_UpdatePs_Retryable() {
+    public void handleRequest_UpdatePs_Throttling() {
         final UpdateHandler handler = new UpdateHandler();
 
         List<software.amazon.sso.permissionset.Tag> tags = new ArrayList<>();
@@ -447,6 +580,183 @@ public class UpdateHandlerTest extends AbstractTestBase {
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
         assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_UpdatePs_ISE() {
+        final UpdateHandler handler = new UpdateHandler();
+
+        List<software.amazon.sso.permissionset.Tag> tags = new ArrayList<>();
+
+        software.amazon.sso.permissionset.Tag tag = new software.amazon.sso.permissionset.Tag();
+        tag.setKey("key");
+        tag.setValue("value");
+        tags.add(tag);
+        List<Tag> covertedTags = new ArrayList<>();
+        covertedTags.add(Tag.builder().key("key1").value("value1").build());
+
+        List<String> newManagedPolicyArns = new ArrayList<>();
+        newManagedPolicyArns.add(TEST_ADMIN_MANAGED_POLICY);
+        List<AttachedManagedPolicy> newManagedPolicies = new ArrayList<>();
+        newManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_ADMIN_MANAGED_POLICY).build());
+
+        List<String> existingManagedPolicyArns = new ArrayList<>();
+        existingManagedPolicyArns.add(TEST_READONLY_POLICY);
+        List<AttachedManagedPolicy> existingManagedPolicies = new ArrayList<>();
+        existingManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_READONLY_POLICY).build());
+
+        final ResourceModel inputModel = ResourceModel.builder()
+                .name(TEST_PERMISSION_SET_NAME)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .relayStateType(TEST_RELAY_STATE)
+                .managedPolicies(newManagedPolicyArns)
+                .tags(tags)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(inputModel)
+                .build();
+
+        UpdatePermissionSetRequest updatePermissionSetRequest = UpdatePermissionSetRequest.builder()
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .relayState(TEST_RELAY_STATE)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(updatePermissionSetRequest, proxyClient.client()::updatePermissionSet))
+                .thenThrow(InternalServerException.builder().message(ISE_MESSAGE).build());
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(5);
+        assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_UpdatePs_ConflictException() {
+        final UpdateHandler handler = new UpdateHandler();
+
+        List<software.amazon.sso.permissionset.Tag> tags = new ArrayList<>();
+
+        software.amazon.sso.permissionset.Tag tag = new software.amazon.sso.permissionset.Tag();
+        tag.setKey("key");
+        tag.setValue("value");
+        tags.add(tag);
+        List<Tag> covertedTags = new ArrayList<>();
+        covertedTags.add(Tag.builder().key("key1").value("value1").build());
+
+        List<String> newManagedPolicyArns = new ArrayList<>();
+        newManagedPolicyArns.add(TEST_ADMIN_MANAGED_POLICY);
+        List<AttachedManagedPolicy> newManagedPolicies = new ArrayList<>();
+        newManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_ADMIN_MANAGED_POLICY).build());
+
+        List<String> existingManagedPolicyArns = new ArrayList<>();
+        existingManagedPolicyArns.add(TEST_READONLY_POLICY);
+        List<AttachedManagedPolicy> existingManagedPolicies = new ArrayList<>();
+        existingManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_READONLY_POLICY).build());
+
+        final ResourceModel inputModel = ResourceModel.builder()
+                .name(TEST_PERMISSION_SET_NAME)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .relayStateType(TEST_RELAY_STATE)
+                .managedPolicies(newManagedPolicyArns)
+                .tags(tags)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(inputModel)
+                .build();
+
+        UpdatePermissionSetRequest updatePermissionSetRequest = UpdatePermissionSetRequest.builder()
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .relayState(TEST_RELAY_STATE)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(updatePermissionSetRequest, proxyClient.client()::updatePermissionSet))
+                .thenThrow(ConflictException.builder().message("Conflict exception.").build());
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(5);
+        assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_UpdatePs_NonRetryable() {
+        final UpdateHandler handler = new UpdateHandler();
+
+        List<software.amazon.sso.permissionset.Tag> tags = new ArrayList<>();
+
+        software.amazon.sso.permissionset.Tag tag = new software.amazon.sso.permissionset.Tag();
+        tag.setKey("key");
+        tag.setValue("value");
+        tags.add(tag);
+        List<Tag> covertedTags = new ArrayList<>();
+        covertedTags.add(Tag.builder().key("key1").value("value1").build());
+
+        List<String> newManagedPolicyArns = new ArrayList<>();
+        newManagedPolicyArns.add(TEST_ADMIN_MANAGED_POLICY);
+        List<AttachedManagedPolicy> newManagedPolicies = new ArrayList<>();
+        newManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_ADMIN_MANAGED_POLICY).build());
+
+        List<String> existingManagedPolicyArns = new ArrayList<>();
+        existingManagedPolicyArns.add(TEST_READONLY_POLICY);
+        List<AttachedManagedPolicy> existingManagedPolicies = new ArrayList<>();
+        existingManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_READONLY_POLICY).build());
+
+        final ResourceModel inputModel = ResourceModel.builder()
+                .name(TEST_PERMISSION_SET_NAME)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .relayStateType(TEST_RELAY_STATE)
+                .managedPolicies(newManagedPolicyArns)
+                .tags(tags)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(inputModel)
+                .build();
+
+        UpdatePermissionSetRequest updatePermissionSetRequest = UpdatePermissionSetRequest.builder()
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .relayState(TEST_RELAY_STATE)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(updatePermissionSetRequest, proxyClient.client()::updatePermissionSet))
+                .thenThrow(ServiceQuotaExceededException.builder().message("NonRetryable.").build());
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.FAILED);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isNull();
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).contains("NonRetryable.");
+        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.GeneralServiceException);
     }
 
     @Test
@@ -841,6 +1151,118 @@ public class UpdateHandlerTest extends AbstractTestBase {
     }
 
     @Test
+    public void handleRequest_ProvisionPs_Retryable_ConflictException() {
+        final UpdateHandler handler = new UpdateHandler();
+
+        List<software.amazon.sso.permissionset.Tag> tags = new ArrayList<>();
+
+        software.amazon.sso.permissionset.Tag tag = new software.amazon.sso.permissionset.Tag();
+        tag.setKey("key");
+        tag.setValue("value");
+        tags.add(tag);
+        List<Tag> ssoTags = new ArrayList<>();
+        ssoTags.add(Tag.builder().key("key1").value("value1").build());
+
+        List<String> newManagedPolicyArns = new ArrayList<>();
+        newManagedPolicyArns.add(TEST_ADMIN_MANAGED_POLICY);
+        List<AttachedManagedPolicy> newManagedPolicies = new ArrayList<>();
+        newManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_ADMIN_MANAGED_POLICY).build());
+
+        List<String> existingManagedPolicyArns = new ArrayList<>();
+        existingManagedPolicyArns.add(TEST_READONLY_POLICY);
+        List<AttachedManagedPolicy> existingManagedPolicies = new ArrayList<>();
+        existingManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_READONLY_POLICY).build());
+
+        final ResourceModel inputModel = ResourceModel.builder()
+                .name(TEST_PERMISSION_SET_NAME)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .relayStateType(TEST_RELAY_STATE)
+                .managedPolicies(newManagedPolicyArns)
+                .inlinePolicy(TEST_INLINE_POLICY_2)
+                .tags(tags)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(inputModel)
+                .build();
+
+        ListTagsForResourceRequest listTagsRequest = ListTagsForResourceRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .resourceArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(listTagsRequest, proxyClient.client()::listTagsForResource))
+                .thenReturn(ListTagsForResourceResponse.builder().tags(ssoTags).build());
+
+        ListManagedPoliciesInPermissionSetRequest listAPRequest = ListManagedPoliciesInPermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        ListManagedPoliciesInPermissionSetResponse listAttachedPoliciesResponse = ListManagedPoliciesInPermissionSetResponse.builder()
+                .attachedManagedPolicies(existingManagedPolicies)
+                .build();
+        ListManagedPoliciesInPermissionSetResponse listUpdatedManagedPoliciesResponse = ListManagedPoliciesInPermissionSetResponse.builder()
+                .attachedManagedPolicies(newManagedPolicies)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(listAPRequest, proxyClient.client()::listManagedPoliciesInPermissionSet))
+                .thenReturn(listAttachedPoliciesResponse)
+                .thenReturn(listUpdatedManagedPoliciesResponse);
+
+        ProvisionPermissionSetRequest provisionPsRequest = ProvisionPermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .targetType(ProvisionTargetType.ALL_PROVISIONED_ACCOUNTS)
+                .build();
+        ProvisionPermissionSetResponse provisionPsResponse = ProvisionPermissionSetResponse.builder()
+                .permissionSetProvisioningStatus(PermissionSetProvisioningStatus.builder().status(StatusValues.IN_PROGRESS).requestId(TEST_REQUEST_ID).build())
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(provisionPsRequest, proxyClient.client()::provisionPermissionSet))
+                .thenThrow(ConflictException.builder().message("Conflict operation.").build());
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        ArgumentCaptor<UntagResourceRequest> untagArgument = ArgumentCaptor.forClass(UntagResourceRequest.class);
+        verify(proxyClient.client(), times(1)).untagResource(untagArgument.capture());
+        assertThat(untagArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(untagArgument.getValue().resourceArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(untagArgument.getValue().tagKeys()).isEqualTo(Arrays.asList("key1"));
+
+        ArgumentCaptor<TagResourceRequest> tagArgument = ArgumentCaptor.forClass(TagResourceRequest.class);
+        verify(proxyClient.client(), times(1)).tagResource(tagArgument.capture());
+        assertThat(tagArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(tagArgument.getValue().resourceArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(tagArgument.getValue().tags()).isEqualTo(Translator.ConvertToSSOTag(tags));
+
+        ArgumentCaptor<DetachManagedPolicyFromPermissionSetRequest> detachPolicyArgument = ArgumentCaptor.forClass(DetachManagedPolicyFromPermissionSetRequest.class);
+        verify(proxyClient.client(), times(1)).detachManagedPolicyFromPermissionSet(detachPolicyArgument.capture());
+        assertThat(detachPolicyArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(detachPolicyArgument.getValue().permissionSetArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(detachPolicyArgument.getValue().managedPolicyArn()).isEqualTo(TEST_READONLY_POLICY);
+
+        ArgumentCaptor<AttachManagedPolicyToPermissionSetRequest> attachPolicyArgument = ArgumentCaptor.forClass(AttachManagedPolicyToPermissionSetRequest.class);
+        verify(proxyClient.client(), times(1)).attachManagedPolicyToPermissionSet(attachPolicyArgument.capture());
+        assertThat(attachPolicyArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(attachPolicyArgument.getValue().permissionSetArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(attachPolicyArgument.getValue().managedPolicyArn()).isEqualTo(TEST_ADMIN_MANAGED_POLICY);
+
+        ArgumentCaptor<PutInlinePolicyToPermissionSetRequest> putInlinePolicyArgument = ArgumentCaptor.forClass(PutInlinePolicyToPermissionSetRequest.class);
+        verify(proxyClient.client(), times(1)).putInlinePolicyToPermissionSet(putInlinePolicyArgument.capture());
+        assertThat(putInlinePolicyArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(putInlinePolicyArgument.getValue().permissionSetArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(putInlinePolicyArgument.getValue().inlinePolicy()).isEqualTo(TEST_INLINE_POLICY_2);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(300);
+        assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
     public void handleRequest_ProvisionPs_Retryable_ISE() {
         final UpdateHandler handler = new UpdateHandler();
 
@@ -953,7 +1375,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
     }
 
     @Test
-    public void handleRequest_ProvisionPs_Failure_ISE() {
+    public void handleRequest_ProvisionPs_NonRetryable() {
         final UpdateHandler handler = new UpdateHandler();
 
         List<software.amazon.sso.permissionset.Tag> tags = new ArrayList<>();
@@ -1021,6 +1443,115 @@ public class UpdateHandlerTest extends AbstractTestBase {
                 .permissionSetProvisioningStatus(PermissionSetProvisioningStatus.builder().status(StatusValues.IN_PROGRESS).requestId(TEST_REQUEST_ID).build())
                 .build();
         when(proxy.injectCredentialsAndInvokeV2(provisionPsRequest, proxyClient.client()::provisionPermissionSet))
+                .thenThrow(ServiceQuotaExceededException.builder().message("NonRetryable.").build());
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        ArgumentCaptor<UntagResourceRequest> untagArgument = ArgumentCaptor.forClass(UntagResourceRequest.class);
+        verify(proxyClient.client(), times(1)).untagResource(untagArgument.capture());
+        assertThat(untagArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(untagArgument.getValue().resourceArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(untagArgument.getValue().tagKeys()).isEqualTo(Arrays.asList("key1"));
+
+        ArgumentCaptor<TagResourceRequest> tagArgument = ArgumentCaptor.forClass(TagResourceRequest.class);
+        verify(proxyClient.client(), times(1)).tagResource(tagArgument.capture());
+        assertThat(tagArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(tagArgument.getValue().resourceArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(tagArgument.getValue().tags()).isEqualTo(Translator.ConvertToSSOTag(tags));
+
+        ArgumentCaptor<DetachManagedPolicyFromPermissionSetRequest> detachPolicyArgument = ArgumentCaptor.forClass(DetachManagedPolicyFromPermissionSetRequest.class);
+        verify(proxyClient.client(), times(1)).detachManagedPolicyFromPermissionSet(detachPolicyArgument.capture());
+        assertThat(detachPolicyArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(detachPolicyArgument.getValue().permissionSetArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(detachPolicyArgument.getValue().managedPolicyArn()).isEqualTo(TEST_READONLY_POLICY);
+
+        ArgumentCaptor<AttachManagedPolicyToPermissionSetRequest> attachPolicyArgument = ArgumentCaptor.forClass(AttachManagedPolicyToPermissionSetRequest.class);
+        verify(proxyClient.client(), times(1)).attachManagedPolicyToPermissionSet(attachPolicyArgument.capture());
+        assertThat(attachPolicyArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(attachPolicyArgument.getValue().permissionSetArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(attachPolicyArgument.getValue().managedPolicyArn()).isEqualTo(TEST_ADMIN_MANAGED_POLICY);
+
+        ArgumentCaptor<PutInlinePolicyToPermissionSetRequest> putInlinePolicyArgument = ArgumentCaptor.forClass(PutInlinePolicyToPermissionSetRequest.class);
+        verify(proxyClient.client(), times(1)).putInlinePolicyToPermissionSet(putInlinePolicyArgument.capture());
+        assertThat(putInlinePolicyArgument.getValue().instanceArn()).isEqualTo(TEST_SSO_INSTANCE_ARN);
+        assertThat(putInlinePolicyArgument.getValue().permissionSetArn()).isEqualTo(TEST_PERMISSION_SET_ARN);
+        assertThat(putInlinePolicyArgument.getValue().inlinePolicy()).isEqualTo(TEST_INLINE_POLICY_2);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.FAILED);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isNull();
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).contains("NonRetryable.");
+        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.GeneralServiceException);
+    }
+
+    @Test
+    public void handleRequest_ProvisionPs_Failure_ResourceNotFound() {
+        final UpdateHandler handler = new UpdateHandler();
+
+        List<software.amazon.sso.permissionset.Tag> tags = new ArrayList<>();
+
+        software.amazon.sso.permissionset.Tag tag = new software.amazon.sso.permissionset.Tag();
+        tag.setKey("key");
+        tag.setValue("value");
+        tags.add(tag);
+        List<Tag> ssoTags = new ArrayList<>();
+        ssoTags.add(Tag.builder().key("key1").value("value1").build());
+
+        List<String> newManagedPolicyArns = new ArrayList<>();
+        newManagedPolicyArns.add(TEST_ADMIN_MANAGED_POLICY);
+        List<AttachedManagedPolicy> newManagedPolicies = new ArrayList<>();
+        newManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_ADMIN_MANAGED_POLICY).build());
+
+        List<String> existingManagedPolicyArns = new ArrayList<>();
+        existingManagedPolicyArns.add(TEST_READONLY_POLICY);
+        List<AttachedManagedPolicy> existingManagedPolicies = new ArrayList<>();
+        existingManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_READONLY_POLICY).build());
+
+        final ResourceModel inputModel = ResourceModel.builder()
+                .name(TEST_PERMISSION_SET_NAME)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .description(TEST_PERMISSION_SET_DESCRIPTION)
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .sessionDuration(TEST_SESSION_DURATION)
+                .relayStateType(TEST_RELAY_STATE)
+                .managedPolicies(newManagedPolicyArns)
+                .inlinePolicy(TEST_INLINE_POLICY_2)
+                .tags(tags)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(inputModel)
+                .build();
+
+        ListTagsForResourceRequest listTagsRequest = ListTagsForResourceRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .resourceArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(listTagsRequest, proxyClient.client()::listTagsForResource))
+                .thenReturn(ListTagsForResourceResponse.builder().tags(ssoTags).build());
+
+        ListManagedPoliciesInPermissionSetRequest listAPRequest = ListManagedPoliciesInPermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .build();
+        ListManagedPoliciesInPermissionSetResponse listAttachedPoliciesResponse = ListManagedPoliciesInPermissionSetResponse.builder()
+                .attachedManagedPolicies(existingManagedPolicies)
+                .build();
+        ListManagedPoliciesInPermissionSetResponse listUpdatedManagedPoliciesResponse = ListManagedPoliciesInPermissionSetResponse.builder()
+                .attachedManagedPolicies(newManagedPolicies)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(listAPRequest, proxyClient.client()::listManagedPoliciesInPermissionSet))
+                .thenReturn(listAttachedPoliciesResponse)
+                .thenReturn(listUpdatedManagedPoliciesResponse);
+
+        ProvisionPermissionSetRequest provisionPsRequest = ProvisionPermissionSetRequest.builder()
+                .instanceArn(TEST_SSO_INSTANCE_ARN)
+                .permissionSetArn(TEST_PERMISSION_SET_ARN)
+                .targetType(ProvisionTargetType.ALL_PROVISIONED_ACCOUNTS)
+                .build();
+        when(proxy.injectCredentialsAndInvokeV2(provisionPsRequest, proxyClient.client()::provisionPermissionSet))
                 .thenThrow(ResourceNotFoundException.builder().message("Permission set not found!").build());
 
         final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
@@ -1063,9 +1594,6 @@ public class UpdateHandlerTest extends AbstractTestBase {
         assertThat(response.getMessage()).isEqualTo("Permission set not found!");
         assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.InternalFailure);
     }
-
-    //////////////////////////////
-
 
     @Test
     public void handleRequest_Failure_ResourceNotFound() {
