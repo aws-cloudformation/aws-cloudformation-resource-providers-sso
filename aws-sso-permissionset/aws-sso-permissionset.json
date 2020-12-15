@@ -88,10 +88,7 @@
       "type": [
         "object",
         "string"
-      ],
-      "pattern": "[\\w+=,.@-]+",
-      "minLength": 1,
-      "maxLength": 10240
+      ]
     },
     "Tags": {
       "type": "array",
