@@ -8,7 +8,7 @@ import software.amazon.cloudformation.proxy.StdCallbackContext;
 @lombok.ToString
 @lombok.EqualsAndHashCode(callSuper = true)
 public class CallbackContext extends StdCallbackContext {
-    private boolean tagUpdateds;
+    private boolean tagUpdated;
     private boolean managedPolicyUpdated;
     private boolean inlinePolicyUpdated;
     private int retryAttempts;

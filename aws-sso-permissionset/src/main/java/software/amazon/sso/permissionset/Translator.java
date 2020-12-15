@@ -1,5 +1,7 @@
 package software.amazon.sso.permissionset;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.ssoadmin.model.CreatePermissionSetRequest;
 import software.amazon.awssdk.services.ssoadmin.model.DeletePermissionSetRequest;
 import software.amazon.awssdk.services.ssoadmin.model.DescribePermissionSetRequest;
@@ -11,10 +13,12 @@ import software.amazon.awssdk.services.ssoadmin.model.Tag;
 import software.amazon.awssdk.services.ssoadmin.model.TagResourceRequest;
 import software.amazon.awssdk.services.ssoadmin.model.UntagResourceRequest;
 import software.amazon.awssdk.services.ssoadmin.model.UpdatePermissionSetRequest;
+import software.amazon.awssdk.services.ssoadmin.model.ValidationException;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -26,6 +30,8 @@ import java.util.stream.Stream;
  */
 
 public class Translator {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   /**
    * Request to create a resource
@@ -161,11 +167,27 @@ public class Translator {
       return null;
     }
     for (Tag tag : tags) {
-      ssoPermissionSetTags.add(new software.amazon.sso.permissionset.Tag().builder()
+      ssoPermissionSetTags.add(software.amazon.sso.permissionset.Tag.builder()
               .key(tag.key())
               .value(tag.value())
               .build());
     }
     return ssoPermissionSetTags;
+  }
+
+  static String processInlinePolicy(final Object policyDocument) {
+
+    if(policyDocument == null) {
+      return null;
+    }
+
+    if (policyDocument instanceof Map) {
+      try {
+        return OBJECT_MAPPER.writeValueAsString(policyDocument);
+      } catch (final JsonProcessingException e) {
+        throw ValidationException.builder().message(e.getMessage()).build();
+      }
+    }
+    return (String)policyDocument;
   }
 }

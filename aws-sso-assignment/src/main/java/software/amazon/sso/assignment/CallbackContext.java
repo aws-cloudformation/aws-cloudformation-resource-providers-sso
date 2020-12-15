@@ -11,6 +11,7 @@ public class CallbackContext extends StdCallbackContext {
 
     private int retryAttempts;
     private boolean handlerInvoked;
+    private boolean readHandlerInvoked;
 
     @JsonIgnore
     public void decrementRetryAttempts() {

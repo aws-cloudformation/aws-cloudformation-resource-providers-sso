@@ -15,6 +15,7 @@ import software.amazon.cloudformation.proxy.ResourceHandlerRequest;
 import software.amazon.sso.permissionset.actionProxy.InlinePolicyProxy;
 import software.amazon.sso.permissionset.actionProxy.ManagedPolicyAttachmentProxy;
 
+import static software.amazon.sso.permissionset.Translator.processInlinePolicy;
 import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS;
 import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS_ZERO;
 
@@ -48,12 +49,12 @@ public class CreateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.AlreadyExists);
                             } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException) {
                                 if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    throw exception;
+                                    return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                                 }
                                 context.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                             }
-                            throw exception;
+                            return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                         })
                         .done((createPermissionSetRequest, createPermissionSetResponse, proxyInvocation, model, context) -> {
                             if (!StringUtils.isNullOrEmpty(createPermissionSetResponse.permissionSet().permissionSetArn())) {
@@ -77,10 +78,10 @@ public class CreateHandler extends BaseHandlerStd {
                                     model.getManagedPolicies());
                         } catch (ThrottlingException | InternalServerException | ConflictException e) {
                             if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                throw e;
+                                return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
                         callbackContext.setManagedPolicyUpdated(true);
                         //Reset the retry attempts for next action
@@ -93,18 +94,21 @@ public class CreateHandler extends BaseHandlerStd {
                     ResourceModel model = progress.getResourceModel();
 
                     if (!callbackContext.isInlinePolicyUpdated()) {
-                        if (model.getInlinePolicy() != null && !model.getInlinePolicy().isEmpty()) {
+                        String inlinePolicy = processInlinePolicy(model.getInlinePolicy());
+                        if (inlinePolicy != null && !inlinePolicy.isEmpty()) {
                             try {
-                                inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(), model.getInlinePolicy());
+                                inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(), inlinePolicy);
                             } catch (ThrottlingException | InternalServerException | ConflictException e) {
                                 if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    throw e;
+                                    return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                                 }
                                 callbackContext.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                             }
                         }
                         callbackContext.setInlinePolicyUpdated(true);
+                        //Reset the retry attempts for read handler
+                        callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
                     }
                     logger.log("Inline policy added successfully.");
                     return progress;

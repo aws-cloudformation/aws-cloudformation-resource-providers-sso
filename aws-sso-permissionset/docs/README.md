@@ -18,7 +18,7 @@ To declare this entity in your AWS CloudFormation template, use the following sy
         "<a href="#sessionduration" title="SessionDuration">SessionDuration</a>" : <i>String</i>,
         "<a href="#relaystatetype" title="RelayStateType">RelayStateType</a>" : <i>String</i>,
         "<a href="#managedpolicies" title="ManagedPolicies">ManagedPolicies</a>" : <i>[ String, ... ]</i>,
-        "<a href="#inlinepolicy" title="InlinePolicy">InlinePolicy</a>" : <i>String</i>,
+        "<a href="#inlinepolicy" title="InlinePolicy">InlinePolicy</a>" : <i>Map, String</i>,
         "<a href="#tags" title="Tags">Tags</a>" : <i>[ <a href="tag.md">Tag</a>, ... ]</i>
     }
 }
@@ -36,7 +36,7 @@ Properties:
     <a href="#relaystatetype" title="RelayStateType">RelayStateType</a>: <i>String</i>
     <a href="#managedpolicies" title="ManagedPolicies">ManagedPolicies</a>: <i>
       - String</i>
-    <a href="#inlinepolicy" title="InlinePolicy">InlinePolicy</a>: <i>String</i>
+    <a href="#inlinepolicy" title="InlinePolicy">InlinePolicy</a>: <i>Map, String</i>
     <a href="#tags" title="Tags">Tags</a>: <i>
       - <a href="tag.md">Tag</a></i>
 </pre>
@@ -137,7 +137,7 @@ The inline policy to put in permission set.
 
 _Required_: No
 
-_Type_: String
+_Type_: Map, String
 
 _Minimum_: <code>1</code>
 

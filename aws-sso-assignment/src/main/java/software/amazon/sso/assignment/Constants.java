@@ -1,4 +1,4 @@
-package software.amazon.sso.assignment.util;
+package software.amazon.sso.assignment;
 
 public class Constants {
     public final static int RETRY_ATTEMPTS = 5;

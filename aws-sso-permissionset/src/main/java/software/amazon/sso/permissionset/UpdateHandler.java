@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static software.amazon.sso.permissionset.Translator.processInlinePolicy;
 import static software.amazon.sso.permissionset.utils.Constants.FAILED_WORKFLOW_REQUEST;
 import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS;
 import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS_ZERO;
@@ -35,13 +36,18 @@ public class UpdateHandler extends BaseHandlerStd {
     private Logger logger;
 
     protected ProgressEvent<ResourceModel, CallbackContext> handleRequest(
-        final AmazonWebServicesClientProxy proxy,
-        final ResourceHandlerRequest<ResourceModel> request,
-        final CallbackContext callbackContext,
-        final ProxyClient<SsoAdminClient> proxyClient,
-        final Logger logger) {
+            final AmazonWebServicesClientProxy proxy,
+            final ResourceHandlerRequest<ResourceModel> request,
+            final CallbackContext callbackContext,
+            final ProxyClient<SsoAdminClient> proxyClient,
+            final Logger logger) {
 
         this.logger = logger;
+
+        if (!callbackContext.isHandlerInvoked()) {
+            callbackContext.setHandlerInvoked(true);
+            callbackContext.setRetryAttempts(RETRY_ATTEMPTS);
+        }
 
         ResourceModel model = request.getDesiredResourceState();
         ManagedPolicyAttachmentProxy managedPolicyAttachmentProxy = new ManagedPolicyAttachmentProxy(proxy, proxyClient);
@@ -62,28 +68,28 @@ public class UpdateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.NotFound);
                             } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException || exception instanceof ConflictException) {
                                 if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    throw exception;
+                                    return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                                 }
                                 context.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                             }
-                            throw exception;
+                            return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                         })
                         .progress())
                 .then(progress -> {
-                    if (!callbackContext.isTagUpdateds()) {
+                    if (!callbackContext.isTagUpdated()) {
                         try {
                             updateTags(model, proxy, proxyClient);
                         } catch (ThrottlingException | InternalServerException | ConflictException e) {
                             if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                throw e;
+                                return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
                         //Reset attempts for next action
                         callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
-                        callbackContext.setTagUpdateds(true);
+                        callbackContext.setTagUpdated(true);
                     }
 
                     logger.log(String.format("%s tags have been successfully updated.", ResourceModel.TYPE_NAME));
@@ -98,10 +104,10 @@ public class UpdateHandler extends BaseHandlerStd {
                                     model.getManagedPolicies());
                         } catch (ThrottlingException | InternalServerException | ConflictException e) {
                             if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                throw e;
+                                return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
                         //Reset attempts for next action
                         callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
@@ -113,17 +119,18 @@ public class UpdateHandler extends BaseHandlerStd {
                 .then(progress -> {
                     if (!callbackContext.isInlinePolicyUpdated()) {
                         try {
-                            if (model.getInlinePolicy() != null && !model.getInlinePolicy().isEmpty()) {
-                                inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(), model.getInlinePolicy());
+                            String inlinePolicy = processInlinePolicy(model.getInlinePolicy());
+                            if (inlinePolicy != null && !inlinePolicy.isEmpty()) {
+                                inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(),inlinePolicy);
                             } else {
                                 inlinePolicyProxy.deleteInlinePolicyFromPermissionSet(model.getInstanceArn(), model.getPermissionSetArn());
                             }
                         } catch (ThrottlingException | InternalServerException | ConflictException e) {
                             if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                throw e;
+                                return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
                         //Reset attempts for next action
                         callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
@@ -146,6 +153,8 @@ public class UpdateHandler extends BaseHandlerStd {
                                     = proxy.injectCredentialsAndInvokeV2(statusRequest, client.client()::describePermissionSetProvisioningStatus);
                             if (statusResult.permissionSetProvisioningStatus().status().equals(StatusValues.SUCCEEDED)) {
                                 logger.log(String.format("%s [%s] has been stabilized.", ResourceModel.TYPE_NAME, model.getPrimaryIdentifier()));
+                                //Reset the retry attempts for read handler
+                                callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
                                 return true;
                             } else if (statusResult.permissionSetProvisioningStatus().status().equals(StatusValues.FAILED)) {
                                 String failedReason = statusResult.permissionSetProvisioningStatus().failureReason();
@@ -160,12 +169,12 @@ public class UpdateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                             } else if (exception instanceof InternalServerException) {
                                 if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    throw exception;
+                                    return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                                 }
                                 context.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                             }
-                            throw exception;
+                            return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                         })
                         .progress()
                 )

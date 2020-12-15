@@ -42,12 +42,12 @@ public class DeleteHandler extends BaseHandlerStd {
                             return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.NotFound);
                         } else if (exception instanceof ThrottlingException || exception instanceof ConflictException || exception instanceof InternalServerException) {
                             if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                throw exception;
+                                return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                             }
                             context.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 1, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
                         }
-                        throw exception;
+                        return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                     })
                     .done((deleteRequest, result, client, model, context) -> ProgressEvent.defaultSuccessHandler(null)));
     }
