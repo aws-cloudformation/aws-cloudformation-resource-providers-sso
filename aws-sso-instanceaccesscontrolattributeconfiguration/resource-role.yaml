@@ -7,7 +7,7 @@ Resources:
   ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      MaxSessionDuration: 42000
+      MaxSessionDuration: 8400
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
