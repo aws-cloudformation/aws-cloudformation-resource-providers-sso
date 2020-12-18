@@ -1,0 +1,117 @@
+{
+  "typeName": "AWS::SSO::InstanceAccessControlAttributeConfiguration",
+  "description": "Resource Type definition for SSO InstanceAccessControlAttributeConfiguration",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-sso/aws-sso-instanceaccesscontrolattributeconfiguration",
+  "definitions": {
+    "AccessControlAttributeValueSource": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 256,
+      "pattern": "[\\p{L}\\p{Z}\\p{N}_.:\\/=+\\-@\\[\\]\\{\\}\\$\\\\\"]*"
+    },
+    "AccessControlAttributeValueSourceList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AccessControlAttributeValueSource"
+      },
+      "maxItems": 1
+    },
+    "AccessControlAttributeValue": {
+      "type": "object",
+      "properties": {
+        "Source": {
+          "$ref": "#/definitions/AccessControlAttributeValueSourceList"
+        }
+      },
+      "required": [
+        "Source"
+      ],
+      "additionalProperties": false
+    },
+    "AccessControlAttribute": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "pattern": "[\\p{L}\\p{Z}\\p{N}_.:\\/=+\\-@]+",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "$ref": "#/definitions/AccessControlAttributeValue"
+        }
+      },
+      "required": [
+        "Key",
+        "Value"
+      ],
+      "additionalProperties": false
+    },
+    "AccessControlAttributeList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AccessControlAttribute"
+      },
+      "maxItems": 50
+    }
+  },
+  "properties": {
+    "InstanceArn": {
+      "description": "The sso instance that the InstanceAccessControlAttributeConfiguration will be owned.",
+      "type": "string",
+      "pattern": "arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}",
+      "minLength": 10,
+      "maxLength": 1224
+    },
+    "InstanceAccessControlAttributeConfiguration": {
+      "description": "InstanceAccessControlAttributeConfiguration for  sso instance",
+      "type": "object",
+      "properties": {
+        "AccessControlAttributes": {
+          "$ref": "#/definitions/AccessControlAttributeList"
+        }
+      },
+      "required": [
+        "AccessControlAttributes"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "InstanceArn",
+    "InstanceAccessControlAttributeConfiguration"
+  ],
+  "primaryIdentifier": [
+    "/properties/InstanceArn"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "sso:CreateInstanceAccessControlAttributeConfiguration",
+        "sso:UpdateApplicationProfileForAWSAccountInstance",
+        "sso:DescribeInstanceAccessControlAttributeConfiguration"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "sso:DescribeInstanceAccessControlAttributeConfiguration"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "sso:UpdateInstanceAccessControlAttributeConfiguration",
+        "sso:DescribeInstanceAccessControlAttributeConfiguration"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "sso:DeleteInstanceAccessControlAttributeConfiguration",
+        "sso:DescribeInstanceAccessControlAttributeConfiguration"
+      ]
+    },
+    "list": {
+      "permissions": []
+    }
+  }
+}
