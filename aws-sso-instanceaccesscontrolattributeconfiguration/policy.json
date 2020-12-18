@@ -1,0 +1,14 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Allow CloudFormation to copy artifacts from the bucket",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "cloudformation.amazonaws.com"
+      },
+      "Action": "*",
+      "Resource": "arn:aws:s3:::uluru-schema-handler-packages-random/*"
+    }
+  ]
+}

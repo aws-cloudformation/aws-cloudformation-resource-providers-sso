@@ -24,6 +24,14 @@ script:
     -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
     -B
     clean verify
+  - cd "$TRAVIS_BUILD_DIR/aws-sso-instanceaccesscontrolattributeconfiguration"
+  # from Maven 3.6.1+, should use `--no-transfer-progress` instead of Slf4jMavenTransferListener
+  - >
+    mvn
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+    -B
+    clean verify
 after_failure:
   - cat "$TRAVIS_BUILD_DIR/aws-sso-permissionset/rpdk.log"
   - cat "$TRAVIS_BUILD_DIR/aws-sso-assignment/rpdk.log"
+  - cat "$TRAVIS_BUILD_DIR/aws-sso-instanceaccesscontrolattributeconfiguration/rpdk.log"

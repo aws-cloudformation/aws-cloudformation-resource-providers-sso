@@ -139,12 +139,6 @@ _Required_: No
 
 _Type_: Map, String
 
-_Minimum_: <code>1</code>
-
-_Maximum_: <code>10240</code>
-
-_Pattern_: <code>[\w+=,.@-]+</code>
-
 _Update requires_: [No interruption](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html#update-no-interrupt)
 
 #### Tags

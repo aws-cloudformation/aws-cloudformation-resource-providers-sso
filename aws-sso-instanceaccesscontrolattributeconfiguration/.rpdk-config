@@ -1,0 +1,19 @@
+{
+    "artifact_type": "RESOURCE",
+    "typeName": "AWS::SSO::InstanceAccessControlAttributeConfiguration",
+    "language": "java",
+    "runtime": "java8",
+    "entrypoint": "software.amazon.sso.instanceaccesscontrolattributeconfiguration.HandlerWrapper::handleRequest",
+    "testEntrypoint": "software.amazon.sso.instanceaccesscontrolattributeconfiguration.HandlerWrapper::testEntrypoint",
+    "settings": {
+        "namespace": [
+            "software",
+            "amazon",
+            "sso",
+            "instanceaccesscontrolattributeconfiguration"
+        ],
+        "codegen_template_path": "guided_aws",
+        "protocolVersion": "2.0.0"
+    },
+    "executableEntrypoint": "software.amazon.sso.instanceaccesscontrolattributeconfiguration.HandlerWrapperExecutable"
+}
