@@ -150,7 +150,6 @@ public class Translator {
                                 .build())
                         .build())
                 .collect(Collectors.toList());
-    
         return ResourceModel
                 .builder()
                 .accessControlAttributes(ssoConfiguration)
@@ -167,19 +166,19 @@ public class Translator {
 
         List<AccessControlAttribute> attributes;
         List<AccessControlAttribute> expectedAttributes;
-    
+
         if (model.getInstanceAccessControlAttributeConfiguration() == null) {
           attributes = model.getAccessControlAttributes();
         } else {
           attributes = model.getInstanceAccessControlAttributeConfiguration().getAccessControlAttributes();
         }
-    
+
         if (expected.getInstanceAccessControlAttributeConfiguration() == null) {
           expectedAttributes = expected.getAccessControlAttributes();
         } else {
           expectedAttributes = expected.getInstanceAccessControlAttributeConfiguration().getAccessControlAttributes();
         }
-    
+
         ImmutableMap<String, Set<String>> actualValues = ImmutableMap.<String, Set<String>>builder()
                 .putAll(attributes
                         .stream()
@@ -188,7 +187,7 @@ public class Translator {
                                 accessControlAttribute -> accessControlAttribute.getValue().getSource().stream().collect(Collectors.toSet())
                         )))
                 .build();
-    
+
         ImmutableMap<String, Set<String> > valuesFromRResponse = ImmutableMap.<String, Set<String>>builder()
                 .putAll(expectedAttributes
                         .stream()
@@ -197,7 +196,7 @@ public class Translator {
                                 accessControlAttribute -> accessControlAttribute.getValue().getSource().stream().collect(Collectors.toSet())
                         )))
                 .build();
-    
+
         return actualValues.equals(valuesFromRResponse);
       }
 

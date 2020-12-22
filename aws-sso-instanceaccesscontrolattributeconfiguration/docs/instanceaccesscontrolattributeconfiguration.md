@@ -2,8 +2,6 @@
 
 InstanceAccessControlAttributeConfiguration for  sso instance
 
-`InstanceAccessControlAttributeConfiguration property is deprecated.  In order to support backwards compatibility this object is now optional and will be accepted.  Please use the AccessControlAttributes property instead.`
-
 ## Syntax
 
 To declare this entity in your AWS CloudFormation template, use the following syntax:
@@ -27,7 +25,7 @@ To declare this entity in your AWS CloudFormation template, use the following sy
 
 #### AccessControlAttributes
 
-_Required_: No
+_Required_: Yes
 
 _Type_: List of <a href="accesscontrolattribute.md">AccessControlAttribute</a>
 
