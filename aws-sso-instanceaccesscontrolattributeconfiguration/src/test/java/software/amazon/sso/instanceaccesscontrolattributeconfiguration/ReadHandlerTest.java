@@ -1,6 +1,8 @@
 package software.amazon.sso.instanceaccesscontrolattributeconfiguration;
 
 import java.time.Duration;
+import java.util.Collections;
+
 import software.amazon.awssdk.services.ssoadmin.SsoAdminClient;
 import software.amazon.awssdk.services.ssoadmin.model.AccessDeniedException;
 import software.amazon.awssdk.services.ssoadmin.model.DescribeInstanceAccessControlAttributeConfigurationRequest;
@@ -88,7 +90,7 @@ public class ReadHandlerTest extends AbstractTestBase {
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(response.getResourceModel()).isEqualTo(expectedModel);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
         assertThat(response.getErrorCode()).isNull();
@@ -105,7 +107,7 @@ public class ReadHandlerTest extends AbstractTestBase {
 
         final ResourceModel updatedModel = ResourceModel.builder()
                 .instanceArn(SSO_INSTANCE_ARN)
-                .instanceAccessControlAttributeConfiguration(cfEmptyAccessControlAttributeConfiguration)
+                .accessControlAttributes(Collections.emptyList())
                 .build();
 
         final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
@@ -254,7 +256,7 @@ public class ReadHandlerTest extends AbstractTestBase {
         assertThat(secondResponse).isNotNull();
         assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
         assertThat(secondResponse.getResourceModels()).isNull();
         assertThat(secondResponse.getMessage()).isNull();
         assertThat(secondResponse.getErrorCode()).isNull();
@@ -300,7 +302,7 @@ public class ReadHandlerTest extends AbstractTestBase {
         assertThat(secondResponse).isNotNull();
         assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
         assertThat(secondResponse.getResourceModels()).isNull();
         assertThat(secondResponse.getMessage()).isNull();
         assertThat(secondResponse.getErrorCode()).isNull();

@@ -25,9 +25,9 @@ public class AbstractTestBase {
           .accessControlAttributes(Arrays.asList(getCfFirsAccessControlAttribute(), getCfSecondAccessControlAttribute()))
           .build();
 
-  protected final InstanceAccessControlAttributeConfiguration cfEmptyAccessControlAttributeConfiguration  = InstanceAccessControlAttributeConfiguration
-          .builder()
-          .accessControlAttributes(Collections.emptyList())
+  protected final ResourceModel expectedModel = ResourceModel.builder()
+          .accessControlAttributes(Arrays.asList(getCfFirsAccessControlAttribute(), getCfSecondAccessControlAttribute()))
+          .instanceArn(SSO_INSTANCE_ARN)
           .build();
 
   protected final software.amazon.awssdk.services.ssoadmin.model.InstanceAccessControlAttributeConfiguration ssoAccessControlAttributeConfiguration  = software.amazon.awssdk.services.ssoadmin.model.InstanceAccessControlAttributeConfiguration

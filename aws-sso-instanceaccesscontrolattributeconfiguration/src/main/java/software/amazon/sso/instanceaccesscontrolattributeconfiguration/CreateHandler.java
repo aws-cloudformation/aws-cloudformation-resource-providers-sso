@@ -18,7 +18,7 @@ import software.amazon.cloudformation.proxy.ProgressEvent;
 import software.amazon.cloudformation.proxy.ProxyClient;
 import software.amazon.cloudformation.proxy.ResourceHandlerRequest;
 
-import static software.amazon.sso.instanceaccesscontrolattributeconfiguration.Translator.compareIfAccessControlAttributeConfigsIsEquals;
+import static software.amazon.sso.instanceaccesscontrolattributeconfiguration.Translator.accessControlAttributeConfigsIsEquals;
 import static software.amazon.sso.instanceaccesscontrolattributeconfiguration.Translator.convertToCFConfiguration;
 
 /**
@@ -55,12 +55,11 @@ public class CreateHandler extends BaseHandlerStd {
                                     if (InstanceAccessControlAttributeConfigurationStatus.CREATION_IN_PROGRESS.equals(describeABACResponse.status())) {
                                         logger.log(String.format("Attribute based access configuration creation is in progress."));
                                         return false;
-                                    } else if (InstanceAccessControlAttributeConfigurationStatus.ENABLED.equals(describeABACResponse.status()) && compareIfAccessControlAttributeConfigsIsEquals(model.getInstanceAccessControlAttributeConfiguration(),
-                                            convertToCFConfiguration(describeABACResponse.instanceAccessControlAttributeConfiguration()))) {
+                                    } else if (InstanceAccessControlAttributeConfigurationStatus.ENABLED.equals(describeABACResponse.status()) &&
+                                                accessControlAttributeConfigsIsEquals(model, convertToCFConfiguration(describeABACResponse))) {
                                         return true;
                                     } else {
-                                        if (!compareIfAccessControlAttributeConfigsIsEquals(model.getInstanceAccessControlAttributeConfiguration(),
-                                                convertToCFConfiguration(describeABACResponse.instanceAccessControlAttributeConfiguration()))) {
+                                        if (!accessControlAttributeConfigsIsEquals(model, convertToCFConfiguration(describeABACResponse))) {
                                             logger.log(String.format("Failed to stabilize create. RequestId: %s", createResponse.responseMetadata().requestId()));
                                             Throwable exception = new CfnGeneralServiceException("Failed to create desired attribute based access configuration");
                                             throw new CfnGeneralServiceException(exception);
@@ -89,7 +88,7 @@ public class CreateHandler extends BaseHandlerStd {
                                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                                     }
                                 })
-                                .success()
+                                .progress()
                 ).then(progress -> new ReadHandler().handleRequest(proxy, request, new CallbackContext(), proxyClient, logger));
     }
 }

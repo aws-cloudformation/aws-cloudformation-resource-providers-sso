@@ -17,7 +17,7 @@ import software.amazon.cloudformation.proxy.ProgressEvent;
 import software.amazon.cloudformation.proxy.ProxyClient;
 import software.amazon.cloudformation.proxy.ResourceHandlerRequest;
 
-import static software.amazon.sso.instanceaccesscontrolattributeconfiguration.Translator.compareIfAccessControlAttributeConfigsIsEquals;
+import static software.amazon.sso.instanceaccesscontrolattributeconfiguration.Translator.accessControlAttributeConfigsIsEquals;
 import static software.amazon.sso.instanceaccesscontrolattributeconfiguration.Translator.convertToCFConfiguration;
 
 /**
@@ -53,8 +53,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                             .build();
                                     DescribeInstanceAccessControlAttributeConfigurationResponse describeABACResponse = proxy.injectCredentialsAndInvokeV2(describeRequest,
                                             client.client()::describeInstanceAccessControlAttributeConfiguration);
-                                    if (!compareIfAccessControlAttributeConfigsIsEquals(model.getInstanceAccessControlAttributeConfiguration(),
-                                            convertToCFConfiguration(describeABACResponse.instanceAccessControlAttributeConfiguration()))) {
+                                    if (!accessControlAttributeConfigsIsEquals(model, convertToCFConfiguration(describeABACResponse))) {
                                         Throwable exception = new CfnGeneralServiceException("Failed to update attribute based access configuration");
                                         logger.log(String.format("Failed to stabilize update. RequestId: %s", describeABACResponse.responseMetadata().requestId()));
                                         throw new CfnGeneralServiceException(exception);

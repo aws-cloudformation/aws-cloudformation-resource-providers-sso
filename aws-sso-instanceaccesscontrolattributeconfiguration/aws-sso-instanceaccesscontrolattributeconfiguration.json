@@ -75,12 +75,15 @@
         "AccessControlAttributes"
       ],
       "additionalProperties": false
+    },
+    "AccessControlAttributes": {
+      "$ref": "#/definitions/AccessControlAttributeList"
     }
   },
   "additionalProperties": false,
-  "required": [
-    "InstanceArn",
-    "InstanceAccessControlAttributeConfiguration"
+  "required": ["InstanceArn"],
+  "createOnlyProperties": [
+    "/properties/InstanceArn"
   ],
   "primaryIdentifier": [
     "/properties/InstanceArn"
