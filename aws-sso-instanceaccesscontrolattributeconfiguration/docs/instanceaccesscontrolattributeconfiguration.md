@@ -1,8 +1,6 @@
 # AWS::SSO::InstanceAccessControlAttributeConfiguration InstanceAccessControlAttributeConfiguration
 
-InstanceAccessControlAttributeConfiguration for  sso instance
-
-`InstanceAccessControlAttributeConfiguration property is deprecated.  In order to support backwards compatibility this object is now optional and will be accepted.  Please use the AccessControlAttributes property instead.`
+InstanceAccessControlAttributeConfiguration property is deprecated.  In order to support backwards compatibility this object is now optional and will be accepted.  Please use the [AccessControlAttributes](accesscontrolattribute.md) property instead.
 
 ## Syntax
 
