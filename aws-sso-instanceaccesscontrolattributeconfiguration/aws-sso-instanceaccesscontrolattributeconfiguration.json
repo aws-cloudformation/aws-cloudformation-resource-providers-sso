@@ -81,7 +81,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["InstanceArn"],
+  "required": [
+    "InstanceArn"
+  ],
   "createOnlyProperties": [
     "/properties/InstanceArn"
   ],
