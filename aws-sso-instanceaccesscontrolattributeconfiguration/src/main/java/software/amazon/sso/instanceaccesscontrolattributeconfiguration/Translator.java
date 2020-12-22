@@ -8,7 +8,6 @@ import software.amazon.awssdk.services.ssoadmin.model.UpdateInstanceAccessContro
 import software.amazon.awssdk.services.ssoadmin.model.DeleteInstanceAccessControlAttributeConfigurationRequest;
 import software.amazon.cloudformation.exceptions.CfnInvalidRequestException;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;

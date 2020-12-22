@@ -13,7 +13,6 @@ To declare this entity in your AWS CloudFormation template, use the following sy
     "Type" : "AWS::SSO::InstanceAccessControlAttributeConfiguration",
     "Properties" : {
         "<a href="#instancearn" title="InstanceArn">InstanceArn</a>" : <i>String</i>,
-        "<a href="#instanceaccesscontrolattributeconfiguration" title="InstanceAccessControlAttributeConfiguration">InstanceAccessControlAttributeConfiguration</a>" : <i><a href="instanceaccesscontrolattributeconfiguration.md">InstanceAccessControlAttributeConfiguration</a></i>,
         "<a href="#accesscontrolattributes" title="AccessControlAttributes">AccessControlAttributes</a>" : <i>[ <a href="accesscontrolattribute.md">AccessControlAttribute</a>, ... ]</i>
     }
 }
@@ -25,7 +24,6 @@ To declare this entity in your AWS CloudFormation template, use the following sy
 Type: AWS::SSO::InstanceAccessControlAttributeConfiguration
 Properties:
     <a href="#instancearn" title="InstanceArn">InstanceArn</a>: <i>String</i>
-    <a href="#instanceaccesscontrolattributeconfiguration" title="InstanceAccessControlAttributeConfiguration">InstanceAccessControlAttributeConfiguration</a>: <i><a href="instanceaccesscontrolattributeconfiguration.md">InstanceAccessControlAttributeConfiguration</a></i>
     <a href="#accesscontrolattributes" title="AccessControlAttributes">AccessControlAttributes</a>: <i>
       - <a href="accesscontrolattribute.md">AccessControlAttribute</a></i>
 </pre>
@@ -48,19 +46,9 @@ _Pattern_: <code>arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}</code>
 
 _Update requires_: [Replacement](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html#update-replacement)
 
-#### InstanceAccessControlAttributeConfiguration
-
-InstanceAccessControlAttributeConfiguration for  sso instance
-
-_Required_: No
-
-_Type_: <a href="instanceaccesscontrolattributeconfiguration.md">InstanceAccessControlAttributeConfiguration</a>
-
-_Update requires_: [No interruption](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html#update-no-interrupt)
-
 #### AccessControlAttributes
 
-_Required_: No
+_Required_: Yes
 
 _Type_: List of <a href="accesscontrolattribute.md">AccessControlAttribute</a>
 
