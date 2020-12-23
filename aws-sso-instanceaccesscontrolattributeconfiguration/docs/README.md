@@ -47,9 +47,17 @@ _Pattern_: <code>arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}</code>
 _Update requires_: [Replacement](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html#update-replacement)
 #### AccessControlAttributes
 
-_Required_: Yes
+_Required_: Yes (Unless deprecated field InstanceAccessControlAttributeConfiguration is in use, see deprecation notice)".
 
 _Type_: List of <a href="accesscontrolattribute.md">AccessControlAttribute</a>
+
+_Update requires_: [No interruption](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html#update-no-interrupt)
+#### InstanceAccessControlAttributeConfiguration
+InstanceAccessControlAttributeConfiguration property is deprecated.  In order to support backwards compatibility this object is now optional and will be accepted.  Please use the `AccessControlAttributes` property instead.
+
+_Required_: No
+
+_Type_: <a href="instanceaccesscontrolattributeconfiguration.md">InstanceAccessControlAttributeConfiguration</a>
 
 _Update requires_: [No interruption](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html#update-no-interrupt)
 
