@@ -54,9 +54,8 @@ _Type_: List of <a href="accesscontrolattribute.md">AccessControlAttribute</a>
 _Update requires_: [No interruption](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html#update-no-interrupt)
 #### InstanceAccessControlAttributeConfiguration
 
+The InstanceAccessControlAttributeConfiguration property has been deprecated but is still supported for backwards compatibility purposses. We recomend that you use  `AccessControlAttributes` property instead.
 
-> **NOTE**: The InstanceAccessControlAttributeConfiguration property has been deprecated but is still supported for backwards compatibility purposses. We recomend that you use  `AccessControlAttributes` property instead.
-purposes
 _Required_: No
 
 _Type_: <a href="instanceaccesscontrolattributeconfiguration.md">InstanceAccessControlAttributeConfiguration</a>
