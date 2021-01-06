@@ -64,7 +64,7 @@
       "maxLength": 1224
     },
     "InstanceAccessControlAttributeConfiguration": {
-      "description": "The InstanceAccessControlAttributeConfiguration property has been deprecated but is still supported for backwards compatibility purposses. We recomend that you use  AccessControlAttributes property instead.",
+      "description": "The InstanceAccessControlAttributeConfiguration property has been deprecated but is still supported for backwards compatibility purposes. We recomend that you use  AccessControlAttributes property instead.",
       "type": "object",
       "properties": {
         "AccessControlAttributes": {
