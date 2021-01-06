@@ -17,6 +17,7 @@ import software.amazon.awssdk.services.ssoadmin.model.SsoAdminException;
 import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
 import software.amazon.awssdk.services.ssoadmin.model.ValidationException;
 import software.amazon.cloudformation.exceptions.CfnGeneralServiceException;
+import software.amazon.cloudformation.exceptions.CfnInvalidRequestException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
 import software.amazon.cloudformation.proxy.HandlerErrorCode;
 import software.amazon.cloudformation.proxy.OperationStatus;
@@ -77,12 +78,6 @@ public class CreateHandlerTest extends AbstractTestBase {
         proxyClient = MOCK_PROXY(proxy, sdkClient);
     }
 
-    @AfterEach
-    public void tear_down() {
-        verify(sdkClient, atLeastOnce()).serviceName();
-        verifyNoMoreInteractions(sdkClient);
-    }
-
     @Test
     public void handleRequest_SimpleSuccess() {
         final CreateHandler handler = new CreateHandler();
@@ -114,10 +109,86 @@ public class CreateHandlerTest extends AbstractTestBase {
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isEqualTo(expectedModel);
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_with_list_Success() {
+        final CreateHandler handler = new CreateHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .accessControlAttributes(Arrays.asList(getCfFirsAccessControlAttribute(), getCfSecondAccessControlAttribute()))
+                .instanceArn(SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+        final DescribeInstanceAccessControlAttributeConfigurationResponse describeResponse = DescribeInstanceAccessControlAttributeConfigurationResponse
+                .builder()
+                .instanceAccessControlAttributeConfiguration(ssoAccessControlAttributeConfiguration)
+                .status(InstanceAccessControlAttributeConfigurationStatus.ENABLED)
+                .build();
+
+        when(proxy.injectCredentialsAndInvokeV2(createConfigurationRequest, proxyClient.client()::createInstanceAccessControlAttributeConfiguration))
+                .thenReturn(createConfigurationResponse);
+
+        when(proxy.injectCredentialsAndInvokeV2(describeRequest, proxyClient.client()::describeInstanceAccessControlAttributeConfiguration))
+                .thenReturn(describeResponse)
+                .thenReturn(describeResponse);
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
         assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
         assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_with_instance_and_list_Fails() {
+        final CreateHandler handler = new CreateHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .accessControlAttributes(Arrays.asList(getCfFirsAccessControlAttribute(), getCfSecondAccessControlAttribute()))
+                .instanceArn(SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+
+        assertThatThrownBy(() -> handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger))
+                .isInstanceOf(CfnInvalidRequestException.class)
+                .hasMessageContaining("Either an InstanceAccessControlAttributeConfiguration or an AccessControlAttributes property can be present in the schema, not both.");
+
+    }
+
+    @Test
+    public void handleRequest_when_neither_instance_or_list_present_Fails() {
+        final CreateHandler handler = new CreateHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .instanceArn(SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+
+        assertThatThrownBy(() -> handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger))
+                .isInstanceOf(CfnInvalidRequestException.class)
+                .hasMessageContaining("Resource model must contain an InstanceAccessControlAttributeConfiguration or an AccessControlAttributes property");
     }
 
     @Test
@@ -267,7 +338,7 @@ public class CreateHandlerTest extends AbstractTestBase {
         assertThat(secondResponse).isNotNull();
         assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
         assertThat(secondResponse.getResourceModels()).isNull();
         assertThat(secondResponse.getMessage()).isNull();
         assertThat(secondResponse.getErrorCode()).isNull();
@@ -316,7 +387,7 @@ public class CreateHandlerTest extends AbstractTestBase {
         assertThat(secondResponse).isNotNull();
         assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
         assertThat(secondResponse.getResourceModels()).isNull();
         assertThat(secondResponse.getMessage()).isNull();
         assertThat(secondResponse.getErrorCode()).isNull();
@@ -481,7 +552,7 @@ public class CreateHandlerTest extends AbstractTestBase {
         assertThat(secondResponse).isNotNull();
         assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
         assertThat(secondResponse.getResourceModels()).isNull();
         assertThat(secondResponse.getMessage()).isNull();
         assertThat(secondResponse.getErrorCode()).isNull();
@@ -530,7 +601,7 @@ public class CreateHandlerTest extends AbstractTestBase {
         assertThat(secondResponse).isNotNull();
         assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
         assertThat(secondResponse.getResourceModels()).isNull();
         assertThat(secondResponse.getMessage()).isNull();
         assertThat(secondResponse.getErrorCode()).isNull();
@@ -575,7 +646,7 @@ public class CreateHandlerTest extends AbstractTestBase {
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(response.getResourceModel()).isEqualTo(expectedModel);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
         assertThat(response.getErrorCode()).isNull();
