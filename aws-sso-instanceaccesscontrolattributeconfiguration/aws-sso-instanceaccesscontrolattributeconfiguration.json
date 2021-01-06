@@ -57,7 +57,7 @@
   },
   "properties": {
     "InstanceArn": {
-      "description": "The sso instance that the InstanceAccessControlAttributeConfiguration will be owned.",
+      "description": "The ARN of the AWS SSO instance under which the operation will be executed.",
       "type": "string",
       "pattern": "arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}",
       "minLength": 10,
