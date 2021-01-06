@@ -1,6 +1,6 @@
 # AWS::SSO::InstanceAccessControlAttributeConfiguration
 
-Resource Type definition for SSO InstanceAccessControlAttributeConfiguration
+Enables the attribute-based access control (ABAC) feature for the specified AWS SSO instance. You can also specify new attributes to add to your ABAC configuration during the enabling process. For more information about ABAC, see [Attribute-Based Access Control](https://docs.aws.amazon.com/singlesignon/latest/userguide/abac.html) in the AWS SSO User Guide.
 
 ## Syntax
 
