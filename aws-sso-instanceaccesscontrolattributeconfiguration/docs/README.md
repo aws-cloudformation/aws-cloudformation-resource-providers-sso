@@ -47,6 +47,8 @@ _Pattern_: <code>arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}</code>
 _Update requires_: [Replacement](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html#update-replacement)
 #### AccessControlAttributes
 
+Lists the attributes that are configured for ABAC in the specified AWS SSO instance.
+
 _Required_: Yes (Unless deprecated field InstanceAccessControlAttributeConfiguration is in use, see deprecation notice)".
 
 _Type_: List of <a href="accesscontrolattribute.md">AccessControlAttribute</a>
