@@ -2,7 +2,7 @@
 
 Enables the attribute-based access control (ABAC) feature for the specified AWS SSO instance. You can also specify new attributes to add to your ABAC configuration during the enabling process. For more information about ABAC, see [Attribute-Based Access Control](https://docs.aws.amazon.com/singlesignon/latest/userguide/abac.html) in the AWS SSO User Guide.
 
-> **_NOTE:_**  The InstanceAccessControlAttributeConfiguration property has been deprecated but is still supported for backwards compatibility purposses. We recomend that you use  `AccessControlAttributes` property instead.
+> **_NOTE:_**  The InstanceAccessControlAttributeConfiguration property has been deprecated but is still supported for backwards compatibility purposes. We recomend that you use  `AccessControlAttributes` property instead.
 
 
 ## Syntax
@@ -59,7 +59,7 @@ _Type_: List of <a href="accesscontrolattribute.md">AccessControlAttribute</a>
 _Update requires_: [No interruption](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html#update-no-interrupt)
 #### InstanceAccessControlAttributeConfiguration
 
-The InstanceAccessControlAttributeConfiguration property has been deprecated but is still supported for backwards compatibility purposses. We recomend that you use  `AccessControlAttributes` property instead.
+The InstanceAccessControlAttributeConfiguration property has been deprecated but is still supported for backwards compatibility purposes. We recomend that you use  `AccessControlAttributes` property instead.
 
 _Required_: No
 
