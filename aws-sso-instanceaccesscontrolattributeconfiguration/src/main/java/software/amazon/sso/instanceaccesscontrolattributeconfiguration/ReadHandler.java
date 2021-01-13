@@ -24,7 +24,8 @@ import java.security.SecureRandom;
  */
 public class ReadHandler extends BaseHandlerStd {
     private static final String THROTTLE_MESSAGE = "Read request got throttled. Please add DependsOn attribute if you have large number of AWS SSO owned resources";
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String ISE_MESSAGE = "Something went wrong while performing READ call";
+    private static final int MAX_RETRY = 5;
     private Logger logger;
 
     protected ProgressEvent<ResourceModel, CallbackContext> handleRequest(
@@ -40,22 +41,28 @@ public class ReadHandler extends BaseHandlerStd {
                 .translateToServiceRequest(Translator::translateToDescribeRequest)
                 .makeServiceCall((describeRequest, client) -> {
                     DescribeInstanceAccessControlAttributeConfigurationResponse response = null;
-                    int readAttempts = 5;
-                    while (readAttempts > RETRY_ATTEMPTS_ZERO) {
+                    int throttlingReadAttempts = MAX_RETRY;
+                    int iseReadAttempts = MAX_RETRY;
+                    while (throttlingReadAttempts > RETRY_ATTEMPTS_ZERO && iseReadAttempts > RETRY_ATTEMPTS_ZERO) {
                         try {
                             response = proxy.injectCredentialsAndInvokeV2(describeRequest,
                                     client.client()::describeInstanceAccessControlAttributeConfiguration);
                             logger.log(String.format("%s has successfully been read.", ResourceModel.TYPE_NAME));
                             break;
-                        } catch (ThrottlingException | InternalServerException e) {
-                            readAttempts = decrementAndWait(readAttempts);
+                        } catch (ThrottlingException te) {
+                            throttlingReadAttempts = decrementAndWait(throttlingReadAttempts);
+                            continue;
+                        } catch (InternalServerException ise) {
+                            iseReadAttempts = decrementAndWait(iseReadAttempts);
                             continue;
                         }
                     }
                     if (response != null) {
                         return response;
+                    } else if (throttlingReadAttempts == RETRY_ATTEMPTS_ZERO) {
+                        throw ThrottlingException.builder().message(THROTTLE_MESSAGE).build();
                     } else {
-                        throw new CfnThrottlingException(THROTTLE_MESSAGE);
+                        throw InternalServerException.builder().message(ISE_MESSAGE).build();
                     }
                 })
                 .handleError((describeRequest, exception, client, model, context) -> {
@@ -65,6 +72,8 @@ public class ReadHandler extends BaseHandlerStd {
                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.AccessDenied);
                     } else if (exception instanceof ValidationException) {
                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InvalidRequest);
+                    } else if (exception instanceof ThrottlingException) {
+                        return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.Throttling);
                     } else {
                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                     }

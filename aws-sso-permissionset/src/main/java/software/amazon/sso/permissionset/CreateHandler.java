@@ -52,7 +52,7 @@ public class CreateHandler extends BaseHandlerStd {
                                     return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                                 }
                                 context.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(exception), model);
                             }
                             return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                         })
@@ -81,7 +81,7 @@ public class CreateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(e), model);
                         }
                         callbackContext.setManagedPolicyUpdated(true);
                         //Reset the retry attempts for next action
@@ -103,7 +103,7 @@ public class CreateHandler extends BaseHandlerStd {
                                     return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                                 }
                                 callbackContext.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(e), model);
                             }
                         }
                         callbackContext.setInlinePolicyUpdated(true);

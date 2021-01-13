@@ -74,7 +74,7 @@ public class DeleteHandler extends BaseHandlerStd {
                                             return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                                         }
                                         context.decrementRetryAttempts();
-                                        return ProgressEvent.defaultInProgressHandler(context, 1, model);
+                                        return ProgressEvent.defaultInProgressHandler(context, getRetryTime(exception), model);
                                     } else {
                                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                                     }

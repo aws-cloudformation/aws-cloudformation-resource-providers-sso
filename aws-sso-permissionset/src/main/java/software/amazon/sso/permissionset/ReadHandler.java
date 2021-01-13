@@ -1,8 +1,12 @@
 package software.amazon.sso.permissionset;
 
 import software.amazon.awssdk.services.ssoadmin.SsoAdminClient;
-import software.amazon.awssdk.services.ssoadmin.model.*;
-import software.amazon.cloudformation.exceptions.CfnThrottlingException;
+import software.amazon.awssdk.services.ssoadmin.model.AccessDeniedException;
+import software.amazon.awssdk.services.ssoadmin.model.DescribePermissionSetResponse;
+import software.amazon.awssdk.services.ssoadmin.model.InternalServerException;
+import software.amazon.awssdk.services.ssoadmin.model.ResourceNotFoundException;
+import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
+import software.amazon.awssdk.services.ssoadmin.model.ValidationException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
 import software.amazon.cloudformation.proxy.HandlerErrorCode;
 import software.amazon.cloudformation.proxy.Logger;
@@ -12,7 +16,6 @@ import software.amazon.cloudformation.proxy.ResourceHandlerRequest;
 import software.amazon.sso.permissionset.actionProxy.InlinePolicyProxy;
 import software.amazon.sso.permissionset.actionProxy.ManagedPolicyAttachmentProxy;
 
-import java.security.SecureRandom;
 import java.util.List;
 
 import static software.amazon.sso.permissionset.utils.Constants.RETRY_ATTEMPTS;
@@ -21,7 +24,7 @@ import static software.amazon.sso.permissionset.utils.TagsUtil.getResourceTags;
 
 public class ReadHandler extends BaseHandlerStd {
     private static final String THROTTLE_MESSAGE = "Read request got throttled. Please add DependsOn attribute if you have large number of AWS SSO owned resources";
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String ISE_MESSAGE = "Something went wrong while performing READ call";
     private Logger logger;
     private List<Tag> tags;
 
@@ -46,8 +49,9 @@ public class ReadHandler extends BaseHandlerStd {
                         .translateToServiceRequest(Translator::translateToReadRequest)
                         .makeServiceCall((readRequest, client) -> {
                             DescribePermissionSetResponse response = null;
-                            int psRetryAttempts = Integer.valueOf(RETRY_ATTEMPTS);
-                            while (psRetryAttempts > RETRY_ATTEMPTS_ZERO) {
+                            int iseRetryAttempts = Integer.valueOf(RETRY_ATTEMPTS);
+                            int throttlingReadAttempts = Integer.valueOf(RETRY_ATTEMPTS);
+                            while (iseRetryAttempts > RETRY_ATTEMPTS_ZERO && throttlingReadAttempts > RETRY_ATTEMPTS_ZERO) {
                                 try {
                                     response = proxy.injectCredentialsAndInvokeV2(readRequest, client.client()::describePermissionSet);
                                     if (tags == null || tags.isEmpty()) {
@@ -59,15 +63,20 @@ public class ReadHandler extends BaseHandlerStd {
 
                                     logger.log(String.format("%s has successfully been read.", ResourceModel.TYPE_NAME));
                                     break;
-                                } catch (ThrottlingException | InternalServerException e) {
-                                    psRetryAttempts = decrementAndWait(psRetryAttempts);
+                                } catch (ThrottlingException te) {
+                                    throttlingReadAttempts = decrementAndWait(throttlingReadAttempts);
+                                    continue;
+                                } catch (InternalServerException ise) {
+                                    iseRetryAttempts = decrementAndWait(iseRetryAttempts);
                                     continue;
                                 }
                             }
-                            if(response != null) {
+                            if (response != null) {
                                 return response;
+                            } else if (throttlingReadAttempts == RETRY_ATTEMPTS_ZERO) {
+                                throw ThrottlingException.builder().message(THROTTLE_MESSAGE).build();
                             } else {
-                                throw new CfnThrottlingException(THROTTLE_MESSAGE);
+                                throw InternalServerException.builder().message(ISE_MESSAGE).build();
                             }
                         })
                         .handleError((describePermissionSetRequest, exception, client, resourceModel, context) -> {
@@ -77,6 +86,8 @@ public class ReadHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.AccessDenied);
                             } else if (exception instanceof ValidationException) {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InvalidRequest);
+                            } else if (exception instanceof ThrottlingException) {
+                                return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.Throttling);
                             } else {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                             }
@@ -89,25 +100,30 @@ public class ReadHandler extends BaseHandlerStd {
                 )
                 .then(progress -> {
                     ResourceModel outputModel = progress.getResourceModel();
-                    CallbackContext context = progress.getCallbackContext();
-                    int mpRetryAttempts = Integer.valueOf(RETRY_ATTEMPTS);
-                    while (mpRetryAttempts > RETRY_ATTEMPTS_ZERO) {
+                    int iseRetryAttempts = Integer.valueOf(RETRY_ATTEMPTS);
+                    int throttlingReadAttempts = Integer.valueOf(RETRY_ATTEMPTS);
+                    while (iseRetryAttempts > RETRY_ATTEMPTS_ZERO && throttlingReadAttempts > RETRY_ATTEMPTS_ZERO) {
                         try {
                             outputModel.setManagedPolicies(managedPolicyAttachmentProxy.getAttachedManagedPolicies(outputModel.getInstanceArn(),
                                     outputModel.getPermissionSetArn()));
                             outputModel.setInlinePolicy(inlinePolicyProxy.getInlinePolicyForPermissionSet(outputModel.getInstanceArn(),
                                     outputModel.getPermissionSetArn()));
                             break;
-                        } catch (ThrottlingException | InternalServerException e) {
-                            mpRetryAttempts = decrementAndWait(mpRetryAttempts);
+                        } catch (ThrottlingException te) {
+                            throttlingReadAttempts = decrementAndWait(throttlingReadAttempts);
+                            continue;
+                        } catch (InternalServerException ise) {
+                            iseRetryAttempts = decrementAndWait(iseRetryAttempts);
                             continue;
                         }
                     }
-                    if(mpRetryAttempts > RETRY_ATTEMPTS_ZERO) {
-                        return ProgressEvent.defaultSuccessHandler(outputModel);
+
+                    if (throttlingReadAttempts == RETRY_ATTEMPTS_ZERO) {
+                        return ProgressEvent.defaultFailureHandler(ThrottlingException.builder().message(THROTTLE_MESSAGE).build(), HandlerErrorCode.Throttling);
+                    } else if(iseRetryAttempts == RETRY_ATTEMPTS_ZERO ) {
+                        return ProgressEvent.defaultFailureHandler(InternalServerException.builder().message(ISE_MESSAGE).build(), HandlerErrorCode.InternalFailure);
                     } else {
-                        return ProgressEvent.defaultFailureHandler(ThrottlingException.builder().message(THROTTLE_MESSAGE).build(),
-                                HandlerErrorCode.Throttling);
+                        return ProgressEvent.defaultSuccessHandler(outputModel);
                     }
                 });
     }

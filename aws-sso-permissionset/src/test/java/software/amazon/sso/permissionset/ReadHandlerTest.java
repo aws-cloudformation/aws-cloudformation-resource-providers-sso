@@ -284,8 +284,14 @@ public class ReadHandlerTest extends AbstractTestBase {
                         .build())
                 .build();
 
-        assertThatThrownBy(() -> handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger))
-                .isInstanceOf(CfnThrottlingException.class);
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.FAILED);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isNull();
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).contains("Read request got throttled");
+        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.Throttling);
     }
 
     @Test

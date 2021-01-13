@@ -349,7 +349,7 @@ public class CreateHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(1);
+        assertThat(response.getCallbackDelaySeconds() >= 10 && response.getCallbackDelaySeconds() <= 40).isEqualTo(true);
         assertThat(response.getCallbackContext().getRetryAttempts()).isEqualTo(RETRY_ATTEMPTS - 1);
         assertThat(response.getResourceModel()).isNotNull();
         assertThat(response.getResourceModels()).isNull();
@@ -398,7 +398,7 @@ public class CreateHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(1);
+        assertThat(response.getCallbackDelaySeconds() >= 5 && response.getCallbackDelaySeconds() <= 20).isEqualTo(true);
         assertThat(response.getCallbackContext().getRetryAttempts()).isEqualTo(RETRY_ATTEMPTS - 1);
         assertThat(response.getResourceModel()).isNotNull();
         assertThat(response.getResourceModels()).isNull();
@@ -563,7 +563,7 @@ public class CreateHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(1);
+        assertThat(response.getCallbackDelaySeconds() >= 5 && response.getCallbackDelaySeconds() <= 20).isEqualTo(true);
         assertThat(response.getCallbackContext().getRetryAttempts()).isEqualTo(RETRY_ATTEMPTS - 1);
         assertThat(response.getResourceModel()).isNotNull();
         assertThat(response.getResourceModels()).isNull();
@@ -612,7 +612,7 @@ public class CreateHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(1);
+        assertThat(response.getCallbackDelaySeconds() >= 10 && response.getCallbackDelaySeconds() <= 40).isEqualTo(true);
         assertThat(response.getCallbackContext().getRetryAttempts()).isEqualTo(RETRY_ATTEMPTS - 1);
         assertThat(response.getResourceModel()).isNotNull();
         assertThat(response.getResourceModels()).isNull();
