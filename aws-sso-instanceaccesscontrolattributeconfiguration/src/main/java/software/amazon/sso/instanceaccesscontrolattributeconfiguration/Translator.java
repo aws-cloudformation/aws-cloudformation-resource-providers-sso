@@ -8,6 +8,8 @@ import software.amazon.awssdk.services.ssoadmin.model.UpdateInstanceAccessContro
 import software.amazon.awssdk.services.ssoadmin.model.DeleteInstanceAccessControlAttributeConfigurationRequest;
 import software.amazon.cloudformation.exceptions.CfnInvalidRequestException;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -105,8 +107,9 @@ public class Translator {
    */
   static software.amazon.awssdk.services.ssoadmin.model.InstanceAccessControlAttributeConfiguration convertToSSOConfiguration(ResourceModel model) {
       List<AccessControlAttribute> attributes;
-
-      if (model.getInstanceAccessControlAttributeConfiguration() == null) {
+      if (model.getInstanceAccessControlAttributeConfiguration() == null && CollectionUtils.isNullOrEmpty(model.getAccessControlAttributes())) {
+          attributes = new ArrayList<>();
+      } else if (model.getInstanceAccessControlAttributeConfiguration() == null) {
           attributes = model.getAccessControlAttributes();
       } else {
           attributes = model.getInstanceAccessControlAttributeConfiguration().getAccessControlAttributes();
@@ -158,25 +161,21 @@ public class Translator {
 
   /**
    * Make sure InstanceAccessControlAttributeConfigurations are equals
-   * @param model  current ResourceModel
-   * @param expected desired ResourceModel
+   * @param cfnModel  current ResourceModel
+   * @param ssoModel desired ResourceModel
    * @return boolean
    */
-  static boolean accessControlAttributeConfigsIsEquals(ResourceModel model, ResourceModel expected){
+  static boolean accessControlAttributeConfigsIsEquals(ResourceModel cfnModel, ResourceModel ssoModel){
 
         List<AccessControlAttribute> attributes;
-        List<AccessControlAttribute> expectedAttributes;
+        List<AccessControlAttribute> expectedAttributes = ssoModel.getAccessControlAttributes();
 
-        if (model.getInstanceAccessControlAttributeConfiguration() == null) {
-          attributes = model.getAccessControlAttributes();
+        if(cfnModel.getInstanceAccessControlAttributeConfiguration() == null && CollectionUtils.isNullOrEmpty(cfnModel.getAccessControlAttributes())) {
+            attributes = new ArrayList<>();
+        } else if (cfnModel.getInstanceAccessControlAttributeConfiguration() == null) {
+          attributes = cfnModel.getAccessControlAttributes();
         } else {
-          attributes = model.getInstanceAccessControlAttributeConfiguration().getAccessControlAttributes();
-        }
-
-        if (expected.getInstanceAccessControlAttributeConfiguration() == null) {
-          expectedAttributes = expected.getAccessControlAttributes();
-        } else {
-          expectedAttributes = expected.getInstanceAccessControlAttributeConfiguration().getAccessControlAttributes();
+          attributes = cfnModel.getInstanceAccessControlAttributeConfiguration().getAccessControlAttributes();
         }
 
         ImmutableMap<String, Set<String>> actualValues = ImmutableMap.<String, Set<String>>builder()
@@ -201,10 +200,6 @@ public class Translator {
       }
 
   private static void validateModel(ResourceModel model) {
-      if (model.getInstanceAccessControlAttributeConfiguration() == null && CollectionUtils.isNullOrEmpty(model.getAccessControlAttributes())) {
-          throw new CfnInvalidRequestException("Resource model must contain an InstanceAccessControlAttributeConfiguration or an AccessControlAttributes property");
-      }
-
       if (model.getInstanceAccessControlAttributeConfiguration() != null && !CollectionUtils.isNullOrEmpty(model.getAccessControlAttributes())) {
           throw new CfnInvalidRequestException("Either an InstanceAccessControlAttributeConfiguration or an AccessControlAttributes property can be present in the schema, not both.");
       }

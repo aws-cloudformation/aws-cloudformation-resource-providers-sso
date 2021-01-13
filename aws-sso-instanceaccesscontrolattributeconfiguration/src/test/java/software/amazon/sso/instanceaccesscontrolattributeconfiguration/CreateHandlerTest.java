@@ -62,6 +62,12 @@ public class CreateHandlerTest extends AbstractTestBase {
             .instanceArn(SSO_INSTANCE_ARN)
             .build();
 
+    private final CreateInstanceAccessControlAttributeConfigurationRequest createEmptyConfigurationRequest = CreateInstanceAccessControlAttributeConfigurationRequest
+            .builder()
+            .instanceAccessControlAttributeConfiguration(ssoEmptyAccessControlAttributeConfiguration)
+            .instanceArn(SSO_INSTANCE_ARN)
+            .build();
+
     private final CreateInstanceAccessControlAttributeConfigurationResponse createConfigurationResponse = CreateInstanceAccessControlAttributeConfigurationResponse
             .builder()
             .build();
@@ -174,7 +180,7 @@ public class CreateHandlerTest extends AbstractTestBase {
     }
 
     @Test
-    public void handleRequest_when_neither_instance_or_list_present_Fails() {
+    public void handleRequest_when_neither_instance_or_list_present_Succeeds() {
         final CreateHandler handler = new CreateHandler();
 
         final ResourceModel model = ResourceModel.builder()
@@ -185,10 +191,27 @@ public class CreateHandlerTest extends AbstractTestBase {
                 .desiredResourceState(model)
                 .build();
 
+        final DescribeInstanceAccessControlAttributeConfigurationResponse describeResponse = DescribeInstanceAccessControlAttributeConfigurationResponse
+                .builder()
+                .instanceAccessControlAttributeConfiguration(ssoEmptyAccessControlAttributeConfiguration)
+                .status(InstanceAccessControlAttributeConfigurationStatus.ENABLED)
+                .build();
 
-        assertThatThrownBy(() -> handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger))
-                .isInstanceOf(CfnInvalidRequestException.class)
-                .hasMessageContaining("Resource model must contain an InstanceAccessControlAttributeConfiguration or an AccessControlAttributes property");
+        when(proxy.injectCredentialsAndInvokeV2(createEmptyConfigurationRequest, proxyClient.client()::createInstanceAccessControlAttributeConfiguration))
+                .thenReturn(createConfigurationResponse);
+
+        when(proxy.injectCredentialsAndInvokeV2(describeRequest, proxyClient.client()::describeInstanceAccessControlAttributeConfiguration))
+                .thenReturn(describeResponse);
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isEqualTo(emptyModel);
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
     }
 
     @Test

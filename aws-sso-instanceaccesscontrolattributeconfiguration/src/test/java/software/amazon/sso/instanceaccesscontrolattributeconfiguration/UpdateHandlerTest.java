@@ -54,6 +54,13 @@ public class UpdateHandlerTest extends AbstractTestBase {
             .instanceAccessControlAttributeConfiguration(ssoAccessControlAttributeConfiguration)
             .instanceArn(SSO_INSTANCE_ARN)
             .build();
+
+    private final UpdateInstanceAccessControlAttributeConfigurationRequest updateEmptyRequest = UpdateInstanceAccessControlAttributeConfigurationRequest
+            .builder()
+            .instanceAccessControlAttributeConfiguration(ssoEmptyAccessControlAttributeConfiguration)
+            .instanceArn(SSO_INSTANCE_ARN)
+            .build();
+
     private final UpdateInstanceAccessControlAttributeConfigurationResponse updateResponse = UpdateInstanceAccessControlAttributeConfigurationResponse
             .builder()
             .build();
@@ -180,9 +187,32 @@ public class UpdateHandlerTest extends AbstractTestBase {
                 .desiredResourceState(model)
                 .build();
 
-        assertThatThrownBy(() -> handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger))
-                .isInstanceOf(CfnInvalidRequestException.class)
-                .hasMessageContaining("Resource model must contain an InstanceAccessControlAttributeConfiguration or an AccessControlAttributes property");
+        DescribeInstanceAccessControlAttributeConfigurationRequest describeRequest = DescribeInstanceAccessControlAttributeConfigurationRequest
+                .builder()
+                .instanceArn(SSO_INSTANCE_ARN)
+                .build();
+
+        DescribeInstanceAccessControlAttributeConfigurationResponse describeResponse = DescribeInstanceAccessControlAttributeConfigurationResponse
+                .builder()
+                .instanceAccessControlAttributeConfiguration(ssoEmptyAccessControlAttributeConfiguration)
+                .status("ENABLED")
+                .build();
+
+        when(proxy.injectCredentialsAndInvokeV2(updateEmptyRequest, proxyClient.client()::updateInstanceAccessControlAttributeConfiguration))
+                .thenReturn(updateResponse);
+
+        when(proxy.injectCredentialsAndInvokeV2(describeRequest, proxyClient.client()::describeInstanceAccessControlAttributeConfiguration))
+                .thenReturn(describeResponse);
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isEqualTo(emptyModel);
+        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
     }
 
     @Test
