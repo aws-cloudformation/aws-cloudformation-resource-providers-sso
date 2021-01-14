@@ -96,6 +96,5 @@
     "list": {
       "permissions": []
     }
-  },
-  "replacementStrategy": "delete_then_create"
+  }
 }

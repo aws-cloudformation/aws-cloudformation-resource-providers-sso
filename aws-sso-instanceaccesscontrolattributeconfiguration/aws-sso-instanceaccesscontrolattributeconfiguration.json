@@ -119,5 +119,7 @@
       "permissions": []
     }
   },
-  "replacementStrategy": "delete_then_create"
+  "deprecatedProperties": [
+    "InstanceAccessControlAttributeConfiguration"
+  ]
 }
