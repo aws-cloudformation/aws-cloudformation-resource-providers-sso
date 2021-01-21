@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.ssoadmin.model.StatusValues;
 import software.amazon.awssdk.services.ssoadmin.model.Tag;
 import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
 import software.amazon.awssdk.services.ssoadmin.model.UpdatePermissionSetResponse;
+import software.amazon.awssdk.services.ssoadmin.model.ValidationException;
 import software.amazon.cloudformation.exceptions.CfnGeneralServiceException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
 import software.amazon.cloudformation.proxy.HandlerErrorCode;
@@ -108,6 +109,8 @@ public class UpdateHandler extends BaseHandlerStd {
                             }
                             callbackContext.decrementRetryAttempts();
                             return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
+                        } catch (ValidationException e2) {
+                            return ProgressEvent.defaultFailureHandler(e2, HandlerErrorCode.InvalidRequest);
                         }
                         //Reset attempts for next action
                         callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
@@ -131,6 +134,8 @@ public class UpdateHandler extends BaseHandlerStd {
                             }
                             callbackContext.decrementRetryAttempts();
                             return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
+                        } catch (ValidationException e2) {
+                            return ProgressEvent.defaultFailureHandler(e2, HandlerErrorCode.InvalidRequest);
                         }
                         //Reset attempts for next action
                         callbackContext.resetRetryAttempts(RETRY_ATTEMPTS);
