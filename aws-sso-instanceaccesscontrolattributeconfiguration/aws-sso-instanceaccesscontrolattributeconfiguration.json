@@ -57,14 +57,14 @@
   },
   "properties": {
     "InstanceArn": {
-      "description": "The sso instance that the InstanceAccessControlAttributeConfiguration will be owned.",
+      "description": "The ARN of the AWS SSO instance under which the operation will be executed.",
       "type": "string",
       "pattern": "arn:aws:sso:::instance/(sso)?ins-[a-zA-Z0-9-.]{16}",
       "minLength": 10,
       "maxLength": 1224
     },
     "InstanceAccessControlAttributeConfiguration": {
-      "description": "InstanceAccessControlAttributeConfiguration for  sso instance",
+      "description": "The InstanceAccessControlAttributeConfiguration property has been deprecated but is still supported for backwards compatibility purposes. We recomend that you use  AccessControlAttributes property instead.",
       "type": "object",
       "properties": {
         "AccessControlAttributes": {
@@ -75,12 +75,17 @@
         "AccessControlAttributes"
       ],
       "additionalProperties": false
+    },
+    "AccessControlAttributes": {
+      "$ref": "#/definitions/AccessControlAttributeList"
     }
   },
   "additionalProperties": false,
   "required": [
-    "InstanceArn",
-    "InstanceAccessControlAttributeConfiguration"
+    "InstanceArn"
+  ],
+  "createOnlyProperties": [
+    "/properties/InstanceArn"
   ],
   "primaryIdentifier": [
     "/properties/InstanceArn"

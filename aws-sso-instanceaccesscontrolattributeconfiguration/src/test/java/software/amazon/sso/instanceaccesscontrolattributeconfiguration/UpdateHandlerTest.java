@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
 import software.amazon.awssdk.services.ssoadmin.model.UpdateInstanceAccessControlAttributeConfigurationRequest;
 import software.amazon.awssdk.services.ssoadmin.model.UpdateInstanceAccessControlAttributeConfigurationResponse;
 import software.amazon.awssdk.services.ssoadmin.model.ValidationException;
+import software.amazon.cloudformation.exceptions.CfnInvalidRequestException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
 import software.amazon.cloudformation.proxy.HandlerErrorCode;
 import software.amazon.cloudformation.proxy.OperationStatus;
@@ -29,6 +30,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -47,11 +49,6 @@ public class UpdateHandlerTest extends AbstractTestBase {
     @Mock
     private SsoAdminClient sdkClient;
 
-    private final InstanceAccessControlAttributeConfiguration cfInstanceAccessControlAttributeConfiguration  = InstanceAccessControlAttributeConfiguration
-            .builder()
-            .accessControlAttributes(Arrays.asList(getCfFirsAccessControlAttribute(), getCfSecondAccessControlAttribute()))
-            .build();
-
     private final UpdateInstanceAccessControlAttributeConfigurationRequest updateRequest = UpdateInstanceAccessControlAttributeConfigurationRequest
             .builder()
             .instanceAccessControlAttributeConfiguration(ssoAccessControlAttributeConfiguration)
@@ -68,18 +65,12 @@ public class UpdateHandlerTest extends AbstractTestBase {
         proxyClient = MOCK_PROXY(proxy, sdkClient);
     }
 
-    @AfterEach
-    public void tear_down() {
-        verify(sdkClient, atLeastOnce()).serviceName();
-        verifyNoMoreInteractions(sdkClient);
-    }
-
     @Test
     public void handleRequest_SimpleSuccess() {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -110,10 +101,88 @@ public class UpdateHandlerTest extends AbstractTestBase {
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(response.getResourceModel()).isEqualTo(expectedModel);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
         assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_with_list_Success() {
+        final UpdateHandler handler = new UpdateHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .accessControlAttributes(Arrays.asList(getCfFirsAccessControlAttribute(), getCfSecondAccessControlAttribute()))
+                .instanceArn(SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+        DescribeInstanceAccessControlAttributeConfigurationRequest describeRequest = DescribeInstanceAccessControlAttributeConfigurationRequest
+                .builder()
+                .instanceArn(SSO_INSTANCE_ARN)
+                .build();
+
+        DescribeInstanceAccessControlAttributeConfigurationResponse describeResponse = DescribeInstanceAccessControlAttributeConfigurationResponse
+                .builder()
+                .instanceAccessControlAttributeConfiguration(ssoAccessControlAttributeConfiguration)
+                .status("ENABLED")
+                .build();
+
+        when(proxy.injectCredentialsAndInvokeV2(updateRequest, proxyClient.client()::updateInstanceAccessControlAttributeConfiguration))
+                .thenReturn(updateResponse);
+
+        when(proxy.injectCredentialsAndInvokeV2(describeRequest, proxyClient.client()::describeInstanceAccessControlAttributeConfiguration))
+                .thenReturn(describeResponse);
+
+
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(Translator.accessControlAttributeConfigsIsEquals(response.getResourceModel(), request.getDesiredResourceState())).isEqualTo(true);        assertThat(response.getResourceModels()).isNull();
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+    }
+
+    @Test
+    public void handleRequest_with_instance_and_list_Fails() {
+        final UpdateHandler handler = new UpdateHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
+                .accessControlAttributes(Arrays.asList(getCfFirsAccessControlAttribute(), getCfSecondAccessControlAttribute()))
+                .instanceArn(SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+        assertThatThrownBy(() -> handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger))
+                .isInstanceOf(CfnInvalidRequestException.class)
+                .hasMessageContaining("Either an InstanceAccessControlAttributeConfiguration or an AccessControlAttributes property can be present in the schema, not both.");
+
+    }
+
+    @Test
+    public void handleRequest_when_neither_instance_or_list_present_Fails() {
+        final UpdateHandler handler = new UpdateHandler();
+
+        final ResourceModel model = ResourceModel.builder()
+                .instanceArn(SSO_INSTANCE_ARN)
+                .build();
+
+        final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
+                .desiredResourceState(model)
+                .build();
+
+        assertThatThrownBy(() -> handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger))
+                .isInstanceOf(CfnInvalidRequestException.class)
+                .hasMessageContaining("Resource model must contain an InstanceAccessControlAttributeConfiguration or an AccessControlAttributes property");
     }
 
     @Test
@@ -121,7 +190,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -147,7 +216,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -173,7 +242,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -199,7 +268,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -225,7 +294,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -268,18 +337,18 @@ public class UpdateHandlerTest extends AbstractTestBase {
         assertThat(secondResponse).isNotNull();
         assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
         assertThat(secondResponse.getResourceModels()).isNull();
         assertThat(secondResponse.getMessage()).isNull();
         assertThat(secondResponse.getErrorCode()).isNull();
     }
 
     @Test
-    public void handleRequest_when_Update_InternalServerException_then_eSuccess() {
+    public void handleRequest_when_Update_InternalServerException_then_Success() {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -322,7 +391,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         assertThat(secondResponse).isNotNull();
         assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(request.getDesiredResourceState());
+        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
         assertThat(secondResponse.getResourceModels()).isNull();
         assertThat(secondResponse.getMessage()).isNull();
         assertThat(secondResponse.getErrorCode()).isNull();
@@ -333,7 +402,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -367,7 +436,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -401,7 +470,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
@@ -435,7 +504,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
-                .instanceAccessControlAttributeConfiguration(cfInstanceAccessControlAttributeConfiguration)
+                .instanceAccessControlAttributeConfiguration(cfAccessControlAttributeConfiguration)
                 .instanceArn(SSO_INSTANCE_ARN)
                 .build();
 
