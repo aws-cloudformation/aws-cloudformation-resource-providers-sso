@@ -60,7 +60,7 @@ public class ManagedPolicyAttachmentProxy {
             ListManagedPoliciesInPermissionSetRequest listRequest = ListManagedPoliciesInPermissionSetRequest.builder()
                     .instanceArn(instanceArn)
                     .permissionSetArn(permissionSetArn)
-                    .nextToken(null)
+                    .nextToken(nextToken)
                     .build();
             ListManagedPoliciesInPermissionSetResponse result =
                     proxy.injectCredentialsAndInvokeV2(listRequest, proxyClient.client()::listManagedPoliciesInPermissionSet);
