@@ -243,23 +243,12 @@ public class ReadHandlerTest extends AbstractTestBase {
         final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
 
         assertThat(response).isNotNull();
-        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(1);
-        assertThat(response.getCallbackContext().getRetryAttempts()).isEqualTo(RETRY_ATTEMPTS - 1);
-        assertThat(response.getResourceModel()).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isEqualTo(expectedModel);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
         assertThat(response.getErrorCode()).isNull();
-
-        final ProgressEvent<ResourceModel, CallbackContext> secondResponse = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
-
-        assertThat(secondResponse).isNotNull();
-        assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
-        assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
-        assertThat(secondResponse.getResourceModels()).isNull();
-        assertThat(secondResponse.getMessage()).isNull();
-        assertThat(secondResponse.getErrorCode()).isNull();
     }
 
     @Test
@@ -290,22 +279,12 @@ public class ReadHandlerTest extends AbstractTestBase {
         final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
 
         assertThat(response).isNotNull();
-        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(1);
-        assertThat(response.getResourceModel()).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
+        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(response.getResourceModel()).isEqualTo(expectedModel);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
         assertThat(response.getErrorCode()).isNull();
-
-        final ProgressEvent<ResourceModel, CallbackContext> secondResponse = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
-
-        assertThat(secondResponse).isNotNull();
-        assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
-        assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
-        assertThat(secondResponse.getResourceModels()).isNull();
-        assertThat(secondResponse.getMessage()).isNull();
-        assertThat(secondResponse.getErrorCode()).isNull();
     }
 
     @Test
@@ -332,6 +311,6 @@ public class ReadHandlerTest extends AbstractTestBase {
         assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
         assertThat(response.getResourceModel()).isNull();
         assertThat(response.getResourceModels()).isNull();
-        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.GeneralServiceException);
+        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.InternalFailure);
     }
 }

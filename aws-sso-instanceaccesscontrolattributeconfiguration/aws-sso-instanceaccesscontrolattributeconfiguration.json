@@ -118,5 +118,8 @@
     "list": {
       "permissions": []
     }
-  }
+  },
+  "deprecatedProperties": [
+    "InstanceAccessControlAttributeConfiguration"
+  ]
 }

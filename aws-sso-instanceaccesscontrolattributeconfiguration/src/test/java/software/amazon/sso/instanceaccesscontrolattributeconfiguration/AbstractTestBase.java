@@ -1,5 +1,6 @@
 package software.amazon.sso.instanceaccesscontrolattributeconfiguration;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +28,11 @@ public class AbstractTestBase {
 
   protected final ResourceModel expectedModel = ResourceModel.builder()
           .accessControlAttributes(Arrays.asList(getCfFirsAccessControlAttribute(), getCfSecondAccessControlAttribute()))
+          .instanceArn(SSO_INSTANCE_ARN)
+          .build();
+
+  protected final ResourceModel emptyModel = ResourceModel.builder()
+          .accessControlAttributes(new ArrayList<>())
           .instanceArn(SSO_INSTANCE_ARN)
           .build();
 

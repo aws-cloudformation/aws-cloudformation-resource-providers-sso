@@ -75,7 +75,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                             throw exception;
                                         }
                                         context.decrementRetryAttempts();
-                                        return ProgressEvent.defaultInProgressHandler(context, 1, model);
+                                        return ProgressEvent.defaultInProgressHandler(context, getRetryTime(exception), model);
                                     } else {
                                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                                     }
