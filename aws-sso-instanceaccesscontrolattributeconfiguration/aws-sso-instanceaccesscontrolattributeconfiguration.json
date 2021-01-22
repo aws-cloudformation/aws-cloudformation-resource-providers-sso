@@ -121,5 +121,6 @@
   },
   "deprecatedProperties": [
     "InstanceAccessControlAttributeConfiguration"
-  ]
+  ],
+  "replacementStrategy": "delete_then_create"
 }
