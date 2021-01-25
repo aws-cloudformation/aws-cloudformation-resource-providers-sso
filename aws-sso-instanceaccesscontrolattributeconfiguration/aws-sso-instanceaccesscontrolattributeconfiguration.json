@@ -120,7 +120,7 @@
     }
   },
   "deprecatedProperties": [
-    "InstanceAccessControlAttributeConfiguration"
+    "/properties/InstanceAccessControlAttributeConfiguration"
   ],
   "replacementStrategy": "delete_then_create"
 }
