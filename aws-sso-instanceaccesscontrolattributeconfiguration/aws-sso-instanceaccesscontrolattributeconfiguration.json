@@ -120,6 +120,6 @@
     }
   },
   "deprecatedProperties": [
-    "InstanceAccessControlAttributeConfiguration"
+    "/properties/InstanceAccessControlAttributeConfiguration"
   ]
 }
