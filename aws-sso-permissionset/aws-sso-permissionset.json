@@ -23,7 +23,8 @@
       "required": [
         "Key",
         "Value"
-      ]
+      ],
+      "additionalProperties": false
     },
     "ManagedPolicyArn": {
       "description": "The managed policy to attach.",
@@ -156,5 +157,6 @@
     "list": {
       "permissions": []
     }
-  }
+  },
+  "replacementStrategy": "delete_then_create"
 }
