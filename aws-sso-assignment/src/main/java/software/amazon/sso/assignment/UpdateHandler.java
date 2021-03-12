@@ -23,9 +23,6 @@ public class UpdateHandler extends BaseHandlerStd {
         this.logger = logger;
 
         //We dont have update for this resource
-        return ProgressEvent.<ResourceModel, CallbackContext>builder()
-                .errorCode(HandlerErrorCode.NotUpdatable)
-                .status(OperationStatus.FAILED)
-                .build();
+        return ProgressEvent.defaultSuccessHandler(request.getDesiredResourceState());
     }
 }
