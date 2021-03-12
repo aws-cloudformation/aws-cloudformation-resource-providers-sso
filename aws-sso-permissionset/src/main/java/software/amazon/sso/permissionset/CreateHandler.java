@@ -82,7 +82,6 @@ public class CreateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                             }
                             callbackContext.decrementRetryAttempts();
-
                             return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(e), model);
                         } catch (ValidationException e2) {
                             return ProgressEvent.defaultFailureHandler(e2, HandlerErrorCode.InvalidRequest);
@@ -107,7 +106,6 @@ public class CreateHandler extends BaseHandlerStd {
                                     return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                                 }
                                 callbackContext.decrementRetryAttempts();
-
                                 return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(e), model);
                             } catch (ValidationException e2) {
                                 return ProgressEvent.defaultFailureHandler(e2, HandlerErrorCode.InvalidRequest);
