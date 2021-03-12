@@ -50,12 +50,12 @@ public class UpdateHandlerTest extends AbstractTestBase {
         final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
 
         assertThat(response).isNotNull();
-        assertThat(response.getStatus()).isEqualTo(OperationStatus.FAILED);
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.SUCCESS);
         assertThat(response.getCallbackContext()).isNull();
         assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(response.getResourceModel()).isNull();
+        assertThat(response.getResourceModel()).isEqualTo(model);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
-        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.NotUpdatable);
+        assertThat(response.getErrorCode()).isNull();
     }
 }
