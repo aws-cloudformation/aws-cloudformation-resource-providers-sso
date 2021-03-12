@@ -53,7 +53,7 @@ public class CreateHandler extends BaseHandlerStd {
                                     return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                                 }
                                 context.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(exception), model);
                             }
                             return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                         })
@@ -82,7 +82,8 @@ public class CreateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                             }
                             callbackContext.decrementRetryAttempts();
-                            return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
+
+                            return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(e), model);
                         } catch (ValidationException e2) {
                             return ProgressEvent.defaultFailureHandler(e2, HandlerErrorCode.InvalidRequest);
                         }
@@ -106,7 +107,8 @@ public class CreateHandler extends BaseHandlerStd {
                                     return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
                                 }
                                 callbackContext.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
+
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(e), model);
                             } catch (ValidationException e2) {
                                 return ProgressEvent.defaultFailureHandler(e2, HandlerErrorCode.InvalidRequest);
                             }

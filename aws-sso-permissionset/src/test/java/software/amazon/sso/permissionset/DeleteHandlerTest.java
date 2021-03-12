@@ -96,7 +96,7 @@ public class DeleteHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(5);
+        assertThat(response.getCallbackDelaySeconds() >= 40 && response.getCallbackDelaySeconds() <= 70).isEqualTo(true);
         assertThat(response.getResourceModel()).isEqualTo(model);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
@@ -127,7 +127,7 @@ public class DeleteHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(5);
+        assertThat(response.getCallbackDelaySeconds() >= 5 && response.getCallbackDelaySeconds() <= 20).isEqualTo(true);
         assertThat(response.getResourceModel()).isEqualTo(model);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
@@ -158,7 +158,7 @@ public class DeleteHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(5);
+        assertThat(response.getCallbackDelaySeconds() >= 5 && response.getCallbackDelaySeconds() <= 20).isEqualTo(true);
         assertThat(response.getResourceModel()).isEqualTo(model);
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
