@@ -50,7 +50,7 @@ public class CreateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.AlreadyExists);
                             } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException) {
                                 if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
+                                    return ProgressEvent.defaultFailureHandler(exception, mapExceptionToHandlerCode(exception));
                                 }
                                 context.decrementRetryAttempts();
                                 return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(exception), model);
@@ -79,7 +79,7 @@ public class CreateHandler extends BaseHandlerStd {
                                     model.getManagedPolicies());
                         } catch (ThrottlingException | InternalServerException | ConflictException e) {
                             if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
+                                return ProgressEvent.defaultFailureHandler(e, mapExceptionToHandlerCode(e));
                             }
                             callbackContext.decrementRetryAttempts();
                             return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(e), model);
@@ -103,7 +103,7 @@ public class CreateHandler extends BaseHandlerStd {
                                 inlinePolicyProxy.putInlinePolicyToPermissionSet(model.getInstanceArn(), model.getPermissionSetArn(), inlinePolicy);
                             } catch (ThrottlingException | InternalServerException | ConflictException e) {
                                 if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
+                                    return ProgressEvent.defaultFailureHandler(e, mapExceptionToHandlerCode(e));
                                 }
                                 callbackContext.decrementRetryAttempts();
                                 return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(e), model);

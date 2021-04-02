@@ -42,7 +42,7 @@ public class DeleteHandler extends BaseHandlerStd {
                             return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.NotFound);
                         } else if (exception instanceof ThrottlingException || exception instanceof ConflictException || exception instanceof InternalServerException) {
                             if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
+                                return ProgressEvent.defaultFailureHandler(exception, mapExceptionToHandlerCode(exception));
                             }
                             context.decrementRetryAttempts();
                             return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(exception), model);

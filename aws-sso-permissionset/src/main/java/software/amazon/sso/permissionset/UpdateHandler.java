@@ -69,7 +69,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.NotFound);
                             } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException || exception instanceof ConflictException) {
                                 if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
+                                    return ProgressEvent.defaultFailureHandler(exception, mapExceptionToHandlerCode(exception));
                                 }
                                 context.decrementRetryAttempts();
                                 return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
@@ -83,7 +83,7 @@ public class UpdateHandler extends BaseHandlerStd {
                             updateTags(model, proxy, proxyClient);
                         } catch (ThrottlingException | InternalServerException | ConflictException e) {
                             if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
+                                return ProgressEvent.defaultFailureHandler(e, mapExceptionToHandlerCode(e));
                             }
                             callbackContext.decrementRetryAttempts();
                             return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
@@ -105,7 +105,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                     model.getManagedPolicies());
                         } catch (ThrottlingException | InternalServerException | ConflictException e) {
                             if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
+                                return ProgressEvent.defaultFailureHandler(e, mapExceptionToHandlerCode(e));
                             }
                             callbackContext.decrementRetryAttempts();
                             return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
@@ -130,7 +130,7 @@ public class UpdateHandler extends BaseHandlerStd {
                             }
                         } catch (ThrottlingException | InternalServerException | ConflictException e) {
                             if (callbackContext.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                return ProgressEvent.defaultFailureHandler(e, HandlerErrorCode.InternalFailure);
+                                return ProgressEvent.defaultFailureHandler(e, mapExceptionToHandlerCode(e));
                             }
                             callbackContext.decrementRetryAttempts();
                             return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
@@ -174,7 +174,7 @@ public class UpdateHandler extends BaseHandlerStd {
                                 return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                             } else if (exception instanceof InternalServerException) {
                                 if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                    return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
+                                    return ProgressEvent.defaultFailureHandler(exception, mapExceptionToHandlerCode(exception));
                                 }
                                 context.decrementRetryAttempts();
                                 return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
