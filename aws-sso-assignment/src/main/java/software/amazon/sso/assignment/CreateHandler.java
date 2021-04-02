@@ -78,7 +78,7 @@ public class CreateHandler extends BaseHandlerStd {
                                         return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(exception), resourceModel);
                                     } else if (exception instanceof InternalServerException) {
                                         if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
-                                            return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
+                                            return ProgressEvent.defaultFailureHandler(exception, mapExceptionToHandlerCode(exception));
                                         }
                                         context.decrementRetryAttempts();
                                         return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(exception), resourceModel);

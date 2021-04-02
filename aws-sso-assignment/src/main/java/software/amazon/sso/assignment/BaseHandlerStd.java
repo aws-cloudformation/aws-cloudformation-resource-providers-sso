@@ -1,9 +1,13 @@
 package software.amazon.sso.assignment;
 
 import software.amazon.awssdk.services.ssoadmin.SsoAdminClient;
+import software.amazon.awssdk.services.ssoadmin.model.AccessDeniedException;
 import software.amazon.awssdk.services.ssoadmin.model.ConflictException;
+import software.amazon.awssdk.services.ssoadmin.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.ssoadmin.model.ThrottlingException;
+import software.amazon.awssdk.services.ssoadmin.model.ValidationException;
 import software.amazon.cloudformation.proxy.AmazonWebServicesClientProxy;
+import software.amazon.cloudformation.proxy.HandlerErrorCode;
 import software.amazon.cloudformation.proxy.Logger;
 import software.amazon.cloudformation.proxy.ProgressEvent;
 import software.amazon.cloudformation.proxy.ProxyClient;
@@ -51,4 +55,21 @@ public abstract class BaseHandlerStd extends BaseHandler<CallbackContext> {
     }
     return possibleNumber.findAny().getAsInt();
   }
+
+  protected HandlerErrorCode mapExceptionToHandlerCode(Exception exception) {
+    if (exception instanceof ResourceNotFoundException) {
+      return HandlerErrorCode.NotFound;
+    } else if (exception instanceof AccessDeniedException) {
+      return HandlerErrorCode.AccessDenied;
+    } else if (exception instanceof ValidationException) {
+      return HandlerErrorCode.InvalidRequest;
+    } else if (exception instanceof ConflictException) {
+      return HandlerErrorCode.AlreadyExists;
+    } else if (exception instanceof ThrottlingException) {
+      return HandlerErrorCode.Throttling;
+    } else {
+      return HandlerErrorCode.InternalFailure;
+    }
+  }
+
 }
