@@ -55,9 +55,9 @@ public abstract class BaseHandlerStd extends BaseHandler<CallbackContext> {
   protected int getRetryTime(Exception exception) {
     IntStream possibleNumber;
     if (exception instanceof ThrottlingException) {
-      possibleNumber =  SECURE_RANDOM.ints(10, 40);
+      possibleNumber =  SECURE_RANDOM.ints(10, 200);
     } else {
-      possibleNumber =  SECURE_RANDOM.ints(5, 20);
+      possibleNumber =  SECURE_RANDOM.ints(50, 250);
     }
     return possibleNumber.findAny().getAsInt();
   }
