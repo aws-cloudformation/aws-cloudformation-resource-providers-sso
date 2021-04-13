@@ -46,9 +46,7 @@ public class CreateHandler extends BaseHandlerStd {
                         .translateToServiceRequest(Translator::translateToCreateRequest)
                         .makeServiceCall((createPermissionSetRequest, client) -> proxy.injectCredentialsAndInvokeV2(createPermissionSetRequest, client.client()::createPermissionSet))
                         .handleError((createPermissionSetRequest, exception, client, model, context) -> {
-                            if (exception instanceof ConflictException) {
-                                return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.AlreadyExists);
-                            } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException) {
+                            if (exception instanceof ConflictException || exception instanceof ThrottlingException || exception instanceof InternalServerException) {
                                 if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
                                     return ProgressEvent.defaultFailureHandler(exception, mapExceptionToHandlerCode(exception));
                                 }

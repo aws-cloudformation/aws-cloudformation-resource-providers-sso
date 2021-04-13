@@ -67,9 +67,8 @@ public class DeleteHandler extends BaseHandlerStd {
                                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.AccessDenied);
                                     } else if (exception instanceof ValidationException) {
                                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InvalidRequest);
-                                    } else if (exception instanceof ConflictException) {
-                                        return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.ResourceConflict);
-                                    } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException) {
+                                    } else if (exception instanceof ConflictException || exception instanceof ThrottlingException
+                                            || exception instanceof InternalServerException) {
                                         if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
                                             return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                                         }

@@ -9,6 +9,7 @@ import software.amazon.awssdk.services.ssoadmin.model.AccessDeniedException;
 import software.amazon.awssdk.services.ssoadmin.model.ConflictException;
 import software.amazon.awssdk.services.ssoadmin.model.DescribeInstanceAccessControlAttributeConfigurationRequest;
 import software.amazon.awssdk.services.ssoadmin.model.DescribeInstanceAccessControlAttributeConfigurationResponse;
+import software.amazon.awssdk.services.ssoadmin.model.InstanceAccessControlAttributeConfigurationStatus;
 import software.amazon.awssdk.services.ssoadmin.model.InternalServerException;
 import software.amazon.awssdk.services.ssoadmin.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.ssoadmin.model.SsoAdminException;
@@ -216,7 +217,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
     }
 
     @Test
-    public void handleRequest_when_Update_ConflictException_then_Failure() {
+    public void handleRequest_when_Update_ConflictException_then_Success() {
         final UpdateHandler handler = new UpdateHandler();
 
         final ResourceModel model = ResourceModel.builder()
@@ -228,17 +229,44 @@ public class UpdateHandlerTest extends AbstractTestBase {
                 .desiredResourceState(model)
                 .build();
 
+        DescribeInstanceAccessControlAttributeConfigurationRequest describeRequest = DescribeInstanceAccessControlAttributeConfigurationRequest
+                .builder()
+                .instanceArn(SSO_INSTANCE_ARN)
+                .build();
+
+        DescribeInstanceAccessControlAttributeConfigurationResponse describeResponse = DescribeInstanceAccessControlAttributeConfigurationResponse
+                .builder()
+                .instanceAccessControlAttributeConfiguration(ssoAccessControlAttributeConfiguration)
+                .status("ENABLED")
+                .build();
+
         when(proxy.injectCredentialsAndInvokeV2(updateRequest, proxyClient.client()::updateInstanceAccessControlAttributeConfiguration))
-                .thenThrow(ConflictException.builder().build());
+                .thenThrow(ConflictException.builder().build())
+                .thenReturn(updateResponse);
+
+        when(proxy.injectCredentialsAndInvokeV2(describeRequest, proxyClient.client()::describeInstanceAccessControlAttributeConfiguration))
+                .thenReturn(describeResponse);
+
 
         final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
 
         assertThat(response).isNotNull();
-        assertThat(response.getStatus()).isEqualTo(OperationStatus.FAILED);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(response.getResourceModel()).isNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
+        assertThat(response.getCallbackContext().getRetryAttempts()).isEqualTo(RETRY_ATTEMPTS - 1);
+        assertThat(response.getResourceModel()).isNotNull();
         assertThat(response.getResourceModels()).isNull();
-        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.ResourceConflict);
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
+
+        final ProgressEvent<ResourceModel, CallbackContext> secondResponse = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
+
+        assertThat(secondResponse).isNotNull();
+        assertThat(secondResponse.getStatus()).isEqualTo(OperationStatus.SUCCESS);
+        assertThat(secondResponse.getCallbackDelaySeconds()).isEqualTo(0);
+        assertThat(secondResponse.getResourceModel()).isEqualTo(expectedModel);
+        assertThat(secondResponse.getResourceModels()).isNull();
+        assertThat(secondResponse.getMessage()).isNull();
+        assertThat(secondResponse.getErrorCode()).isNull();
     }
 
     @Test
@@ -355,7 +383,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds() >= 10 && response.getCallbackDelaySeconds() <= 40).isEqualTo(true);
+        assertThat(response.getCallbackDelaySeconds() >= 10 && response.getCallbackDelaySeconds() <= 200).isEqualTo(true);
         assertThat(response.getCallbackContext().getRetryAttempts()).isEqualTo(RETRY_ATTEMPTS - 1);
         assertThat(response.getResourceModel()).isNotNull();
         assertThat(response.getResourceModels()).isNull();
@@ -409,7 +437,7 @@ public class UpdateHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds() >= 5 && response.getCallbackDelaySeconds() <= 20).isEqualTo(true);
+        assertThat(response.getCallbackDelaySeconds() >= 50 && response.getCallbackDelaySeconds() <= 250).isEqualTo(true);
         assertThat(response.getCallbackContext().getRetryAttempts()).isEqualTo(RETRY_ATTEMPTS - 1);
         assertThat(response.getResourceModel()).isNotNull();
         assertThat(response.getResourceModels()).isNull();

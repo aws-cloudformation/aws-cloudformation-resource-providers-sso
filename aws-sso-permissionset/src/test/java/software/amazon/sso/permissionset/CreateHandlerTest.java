@@ -1120,7 +1120,7 @@ public class CreateHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds() >= 40 && response.getCallbackDelaySeconds() <= 100).isEqualTo(true);
+        assertThat(response.getCallbackDelaySeconds() >= 40 && response.getCallbackDelaySeconds() <= 120).isEqualTo(true);
         assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
         assertThat(response.getResourceModels()).isNull();
         assertThat(response.getMessage()).isNull();
@@ -1322,12 +1322,22 @@ public class CreateHandlerTest extends AbstractTestBase {
         List<Tag> covertedTags = new ArrayList<>();
         covertedTags.add(Tag.builder().key("key").value("value").build());
 
+        List<String> managedPolicyArns = new ArrayList<>();
+        managedPolicyArns.add(TEST_ADMIN_MANAGED_POLICY);
+        managedPolicyArns.add(TEST_READONLY_POLICY);
+
+        List<AttachedManagedPolicy> attachedManagedPolicies = new ArrayList<>();
+        attachedManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_ADMIN_MANAGED_POLICY).build());
+        attachedManagedPolicies.add(AttachedManagedPolicy.builder().arn(TEST_READONLY_POLICY).build());
+
         final ResourceModel model = ResourceModel.builder()
                 .name(TEST_PERMISSION_SET_NAME)
                 .description(TEST_PERMISSION_SET_DESCRIPTION)
                 .instanceArn(TEST_SSO_INSTANCE_ARN)
                 .sessionDuration(TEST_SESSION_DURATION)
                 .relayStateType(TEST_RELAY_STATE)
+                .managedPolicies(managedPolicyArns)
+                .inlinePolicy(TEST_INLINE_POLICY)
                 .tags(tags)
                 .build();
 
@@ -1339,26 +1349,21 @@ public class CreateHandlerTest extends AbstractTestBase {
                 .sessionDuration(TEST_SESSION_DURATION)
                 .tags(covertedTags)
                 .build();
+        when(proxy.injectCredentialsAndInvokeV2(psCreateRequest, proxyClient.client()::createPermissionSet))
+                .thenThrow(ConflictException.builder().message(THROTTLING_MESSAGE).build());
 
         final ResourceHandlerRequest<ResourceModel> request = ResourceHandlerRequest.<ResourceModel>builder()
                 .desiredResourceState(model)
                 .build();
 
-        when(proxy.injectCredentialsAndInvokeV2(psCreateRequest, proxyClient.client()::createPermissionSet))
-                .thenThrow(ConflictException.builder().message(TEST_CONFLICT_EXCEPTION_MESSAGE).build());
-
         final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
 
-        verify(proxyClient.client(), never()).attachManagedPolicyToPermissionSet(any(AttachManagedPolicyToPermissionSetRequest.class));
-
-        verify(proxyClient.client(), never()).putInlinePolicyToPermissionSet(any(PutInlinePolicyToPermissionSetRequest.class));
-
         assertThat(response).isNotNull();
-        assertThat(response.getStatus()).isEqualTo(OperationStatus.FAILED);
-        assertThat(response.getCallbackDelaySeconds()).isEqualTo(0);
-        assertThat(response.getResourceModel()).isNull();
+        assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
+        assertThat(response.getCallbackDelaySeconds() >= 40 && response.getCallbackDelaySeconds() <= 120).isEqualTo(true);
+        assertThat(response.getResourceModel()).isEqualTo(request.getDesiredResourceState());
         assertThat(response.getResourceModels()).isNull();
-        assertThat(response.getMessage()).contains(TEST_CONFLICT_EXCEPTION_MESSAGE);
-        assertThat(response.getErrorCode()).isEqualTo(HandlerErrorCode.AlreadyExists);
+        assertThat(response.getMessage()).isNull();
+        assertThat(response.getErrorCode()).isNull();
     }
 }
