@@ -246,7 +246,7 @@ public class CreateHandlerTest extends AbstractTestBase {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
-        assertThat(response.getCallbackDelaySeconds() >= 10 && response.getCallbackDelaySeconds() <= 200).isEqualTo(true);
+        assertThat(response.getCallbackDelaySeconds() >= 50 && response.getCallbackDelaySeconds() <= 250).isEqualTo(true);
         assertThat(response.getCallbackContext().getRetryAttempts()).isEqualTo(RETRY_ATTEMPTS - 1);
         assertThat(response.getResourceModel()).isNotNull();
         assertThat(response.getResourceModels()).isNull();
