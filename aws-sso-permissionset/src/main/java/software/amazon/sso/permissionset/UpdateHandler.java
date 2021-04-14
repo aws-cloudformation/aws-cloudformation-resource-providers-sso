@@ -168,16 +168,15 @@ public class UpdateHandler extends BaseHandlerStd {
                             return false;
                         })
                         .handleError((awsRequest, exception, client, resourceModel, context) -> {
-                            if (exception instanceof ConflictException || exception instanceof ThrottlingException) {
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 300, model);
-                            } else if (exception instanceof ResourceNotFoundException) {
-                                return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
-                            } else if (exception instanceof InternalServerException) {
+                            if (exception instanceof ConflictException || exception instanceof ThrottlingException
+                                    || exception instanceof InternalServerException) {
                                 if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
                                     return ProgressEvent.defaultFailureHandler(exception, mapExceptionToHandlerCode(exception));
                                 }
                                 context.decrementRetryAttempts();
-                                return ProgressEvent.defaultInProgressHandler(callbackContext, 5, model);
+                                return ProgressEvent.defaultInProgressHandler(callbackContext, 300, model);
+                            } else if (exception instanceof ResourceNotFoundException) {
+                                return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InternalFailure);
                             }
                             return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.GeneralServiceException);
                         })

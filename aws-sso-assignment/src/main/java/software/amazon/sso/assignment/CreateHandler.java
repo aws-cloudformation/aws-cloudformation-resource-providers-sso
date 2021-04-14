@@ -74,9 +74,7 @@ public class CreateHandler extends BaseHandlerStd {
                                     return false;
                                 })
                                 .handleError((awsRequest, exception, client, resourceModel, context) -> {
-                                    if (exception instanceof ConflictException || exception instanceof ThrottlingException) {
-                                        return ProgressEvent.defaultInProgressHandler(callbackContext, getRetryTime(exception), resourceModel);
-                                    } else if (exception instanceof InternalServerException) {
+                                    if (exception instanceof ConflictException || exception instanceof ThrottlingException || exception instanceof InternalServerException) {
                                         if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
                                             return ProgressEvent.defaultFailureHandler(exception, mapExceptionToHandlerCode(exception));
                                         }

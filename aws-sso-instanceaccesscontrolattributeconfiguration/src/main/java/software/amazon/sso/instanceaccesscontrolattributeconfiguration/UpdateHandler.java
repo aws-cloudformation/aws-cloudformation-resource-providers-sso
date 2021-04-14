@@ -62,15 +62,14 @@ public class UpdateHandler extends BaseHandlerStd {
                                     }
                                 })
                                 .handleError((updateRequest, exception, client, model, context) -> {
-                                    if (exception instanceof ConflictException) {
-                                        return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.ResourceConflict);
-                                    } else if(exception instanceof AccessDeniedException){
+                                    if(exception instanceof AccessDeniedException){
                                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.AccessDenied);
                                     } else if (exception instanceof ValidationException) {
                                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.InvalidRequest);
                                     } else if (exception instanceof ResourceNotFoundException) {
                                         return ProgressEvent.defaultFailureHandler(exception, HandlerErrorCode.NotFound);
-                                    } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException) {
+                                    } else if (exception instanceof ThrottlingException || exception instanceof InternalServerException
+                                            || exception instanceof ConflictException) {
                                         if (context.getRetryAttempts() == RETRY_ATTEMPTS_ZERO) {
                                             throw exception;
                                         }

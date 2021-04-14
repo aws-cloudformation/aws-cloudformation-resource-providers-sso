@@ -182,10 +182,7 @@ public class CreateHandlerTest extends AbstractTestBase {
         when(proxy.injectCredentialsAndInvokeV2(createAssignmentRequest, proxyClient.client()::createAccountAssignment))
                 .thenThrow(ConflictException.builder().message("Conflict operation").build());
 
-        CallbackContext context = new CallbackContext();
-        context.setHandlerInvoked(true);
-
-        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, context, proxyClient, logger);
+        final ProgressEvent<ResourceModel, CallbackContext> response = handler.handleRequest(proxy, request, new CallbackContext(), proxyClient, logger);
 
         assertThat(response).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OperationStatus.IN_PROGRESS);
